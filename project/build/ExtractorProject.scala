@@ -1,5 +1,5 @@
 import sbt._
 
-class ExtractorProject(info: ProjectInfo) extends DefaultProject(info) with TemplateProject {
+class ExtractorProject(info: ProjectInfo) extends StandardProject(info) with TemplateProject {
 
 }

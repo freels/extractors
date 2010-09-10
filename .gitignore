@@ -1,5 +1,6 @@
-/lib_managed/
-/src_managed/
+/*_managed/
 /target/
 /project/boot/
 /project/build/target/
+/project/plugins/target/
+/project/plugins/*_managed/
