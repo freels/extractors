@@ -1,0 +1,5 @@
+/lib_managed/
+/src_managed/
+/target/
+/project/boot/
+/project/build/target/
