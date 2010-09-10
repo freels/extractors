@@ -26,7 +26,7 @@ object MapExtractorSpec extends Specification {
       extractor(Map("bool" -> 0)) mustEqual OneBool(false)
       extractor(Map("bool" -> 1)) mustEqual OneBool(true)
       extractor(Map("bool" -> "foo")) must throwA(new ExtractionException("ref is not an AnyVal"))
-      extractor(Map("foo" -> true)) must throwA(new ExtractionException("key does not exist: \"bool\""))
+      extractor(Map("foo" -> true)) must throwA(new NoElementException("element does not exist: \"bool\""))
     }
 
     "char" in {
