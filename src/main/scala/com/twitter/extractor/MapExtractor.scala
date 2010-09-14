@@ -2,7 +2,15 @@ package com.twitter.extractor
 
 trait MapVal[T] extends ValExtractor[(String => Any), String, T]
 
-object MapVal {
+trait GenericConversions {
+  class AnyRefVal[T <: AnyRef] extends MapVal.ConvertingMapVal[T] {
+    def convert(v: Any) = v.asInstanceOf[T]
+  }
+
+  implicit def anyRefVal[T <: AnyRef] = new AnyRefVal[T]
+}
+
+object MapVal extends GenericConversions {
   trait ConvertingMapVal[T] extends MapVal[T] {
     def convert(v: Any): T
     def apply(key: String) = (map: (String => Any)) => try {
@@ -11,7 +19,7 @@ object MapVal {
       case e: ClassCastException => typeMismatch(key, e)
       case e: MatchError => typeMismatch(key, e)
       case e: NoSuchMethodException => typeMismatch(key, e)
-      case e: NoElementException => noElement(key)
+      case e: NoSuchElementException => noElement(key)
     }
   }
 
@@ -23,6 +31,10 @@ object MapVal {
 
   implicit object ByteVal extends ConvertingMapVal[Byte] {
     def convert(v: Any) = v.asInstanceOf[{ def toByte: Byte }].toByte
+  }
+
+  implicit object CharVal extends ConvertingMapVal[Char] {
+    def convert(v: Any) = v.asInstanceOf[{ def toChar: Char }].toChar
   }
 
   implicit object ShortVal extends ConvertingMapVal[Short] {
@@ -55,11 +67,6 @@ object MapVal {
 
   implicit def optionalMapVal[T, OptionT <: Option[T]](implicit inner: MapVal[T]) = new OptionalMapVal[T](inner)
 
-  class AnyRefVal[T <: AnyRef] extends ConvertingMapVal[T] {
-    def convert(v: Any) = v.asInstanceOf[T]
-  }
-
-  implicit def anyRefVal[T <: AnyRef] = new AnyRefVal[T]
 }
 
 object MapExtractor extends Extractor {

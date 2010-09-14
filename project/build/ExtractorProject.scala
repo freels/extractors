@@ -4,7 +4,10 @@ import com.twitter.sbt.StandardProject
 class ExtractorProject(info: ProjectInfo) extends DefaultProject(info) with TemplateProject {
   override def compileOptions = super.compileOptions ++ Seq(Unchecked)
 
-  val scalaToolsTesting  = "testing.scala-tools.org" at "http://scala-tools.org/repo-releases/testing/"
+  val scalaTools  = "testing.scala-tools.org" at "http://scala-tools.org/repo-releases"
 
-  val specs = "org.scala-tools.testing" % "specs" % "1.6.2.1" % "test"
+  val specs = buildScalaVersion match {
+    case "2.8.0" => "org.scala-tools.testing" % "specs_2.8.0" % "1.6.5" % "test"
+    case "2.7.7" => "org.scala-tools.testing" % "specs_2.7.7" % "1.6.2.1" % "test"
+  }
 }
