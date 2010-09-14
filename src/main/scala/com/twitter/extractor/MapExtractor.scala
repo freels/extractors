@@ -2,31 +2,41 @@ package com.twitter.extractor
 
 trait MapVal[T] extends ValExtractor[(String => Any), String, T]
 
-trait GenericConversions {
-  class AnyRefVal[T <: AnyRef] extends MapVal.ConvertingMapVal[T] {
+protected trait ConvertingMapVal[T] extends MapVal[T] {
+  def convert(v: Any): T
+  def apply(key: String) = (map: (String => Any)) => try {
+    convert(map(key))
+  } catch {
+    case e: ClassCastException => typeMismatch(key, e)
+    case e: MatchError => typeMismatch(key, e)
+    case e: NoSuchMethodException => typeMismatch(key, e)
+    case e: NoSuchElementException => noElement(key)
+  }
+}
+
+protected trait AnyRefConversions {
+  protected class AnyRefVal[T <: AnyRef] extends ConvertingMapVal[T] {
     def convert(v: Any) = v.asInstanceOf[T]
   }
 
   implicit def anyRefVal[T <: AnyRef] = new AnyRefVal[T]
 }
 
-object MapVal extends GenericConversions {
-  trait ConvertingMapVal[T] extends MapVal[T] {
-    def convert(v: Any): T
+protected trait OptionConversions extends AnyRefConversions {
+  class OptionalMapVal[T](inner: MapVal[T]) extends MapVal[Option[T]] {
     def apply(key: String) = (map: (String => Any)) => try {
-      convert(map(key))
+      Some(inner(key)(map)).asInstanceOf[Option[T]]
     } catch {
-      case e: ClassCastException => typeMismatch(key, e)
-      case e: MatchError => typeMismatch(key, e)
-      case e: NoSuchMethodException => typeMismatch(key, e)
-      case e: NoSuchElementException => noElement(key)
+      case e: NoElementException => None
     }
   }
 
+  implicit def optionalMapVal[T, OptionT <: Option[T]](implicit inner: MapVal[T]) = new OptionalMapVal[T](inner)
+}
+
+protected trait ValConversions extends OptionConversions {
   implicit object BoolVal extends ConvertingMapVal[Boolean] {
-    def convert(v: Any) = v match {
-      case b: Boolean => b == true
-    }
+    def convert(v: Any) = v match { case b: Boolean => b == true }
   }
 
   implicit object ByteVal extends ConvertingMapVal[Byte] {
@@ -56,18 +66,9 @@ object MapVal extends GenericConversions {
   implicit object FloatVal extends ConvertingMapVal[Float] {
     def convert(v: Any) = v.asInstanceOf[{ def toFloat: Float }].toFloat
   }
-
-  class OptionalMapVal[T](inner: MapVal[T]) extends MapVal[Option[T]] {
-    def apply(key: String) = (map: (String => Any)) => try {
-      Some(inner(key)(map)).asInstanceOf[Option[T]]
-    } catch {
-      case e: NoElementException => None
-    }
-  }
-
-  implicit def optionalMapVal[T, OptionT <: Option[T]](implicit inner: MapVal[T]) = new OptionalMapVal[T](inner)
-
 }
+
+object MapVal extends ValConversions
 
 object MapExtractor extends Extractor {
   type Container = String => Any
