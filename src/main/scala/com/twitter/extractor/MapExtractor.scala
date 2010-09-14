@@ -1,7 +1,5 @@
 package com.twitter.extractor
 
-import scala.reflect.Manifest
-
 trait MapVal[T] extends ValExtractor[(String => Any), String, T]
 
 object MapVal {

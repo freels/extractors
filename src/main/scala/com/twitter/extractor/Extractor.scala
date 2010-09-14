@@ -1,7 +1,5 @@
 package com.twitter.extractor
 
-import scala.reflect.Manifest
-
 class ExtractionException(desc: String, cause: Throwable) extends Exception(desc, cause) {
   def this(desc: String) = this(desc, null)
 }
