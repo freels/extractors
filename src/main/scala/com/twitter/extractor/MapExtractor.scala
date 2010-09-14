@@ -31,7 +31,9 @@ protected trait OptionConversions extends AnyRefConversions {
     }
   }
 
-  implicit def optionalMapVal[T, OptionT <: Option[T]](implicit inner: MapVal[T]) = new OptionalMapVal[T](inner)
+  implicit def optionalMapVal[T, OptT <: Option[T]](implicit inner: MapVal[T]) = {
+    new OptionalMapVal[T](inner)
+  }
 }
 
 protected trait ValConversions extends OptionConversions {

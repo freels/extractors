@@ -1,45 +1,90 @@
-// package com.twitter.extractor
+package com.twitter.extractor
 
-// import scala.reflect.Manifest
-// import java.math.BigDecimal
-// import java.sql._
+import java.math.BigDecimal
+import java.sql.{ResultSet, Date, Time, Timestamp}
 
-// object RowExtractor extends Extractor[ResultSet, String]
+trait RowVal[T] extends ValExtractor[ResultSet, String, T]
 
-// class RowVal[T](implicit protected val resultType: Manifest[T]) extends ExtractorVal[ResultSet, String, T] with OptionalType[T] {
-//   def apply(row: ResultSet, col: String) = {
-//     val result = wrapOptional {
-//       val rowVal = getRowValue(row, col)
-//       if ( row.wasNull ) noElement(col) else rowVal
-//     }
+object RowVal {
+  trait ConvertingRowVal[T] extends RowVal[T] {
+    def getVal(row: ResultSet, key: String): T
+    def apply(key: String) = (row: ResultSet) => {
+      val rv = getVal(row, key)
+      if ( row.wasNull ) noElement(key) else rv
+    }
+  }
 
-//     result.asInstanceOf[T]
-//   }
+  class OptionalRowVal[T](inner: RowVal[T]) extends RowVal[Option[T]] {
+    def apply(key: String) = (row: ResultSet) => try {
+      Some(inner(key)(row))
+    } catch {
+      case e: NoElementException => None
+    }
+  }
 
-//   private def getRowValue[T](row: ResultSet, col: String) = {
-//     innerResultType.erasure.toString match {
-//       case "boolean" => row.getBoolean(col)
-//       case "char" => row.getByte(col).toChar
-//       case "byte" => row.getByte(col)
-//       case "short" => row.getShort(col)
-//       case "int" => row.getInt(col)
-//       case "long" => row.getLong(col)
-//       case "double" => row.getDouble(col)
-//       case "float" => row.getFloat(col)
-//       case "class [B" => row.getBytes(col)
-//       case "class java.lang.String" => row.getString(col)
-//       case "class java.math.BigDecimal" => row.getBigDecimal(col)
-//       case "class java.sql.Date" => row.getDate(col)
-//       case "class java.sql.Time" => row.getTime(col)
-//       case "class java.sql.Timestamp" => row.getTimestamp(col)
-//     }
-//   }
-// }
+  implicit def optionalRowMap[T, OptT <: Option[T]](implicit inner: RowVal[T]) = {
+    new OptionalRowVal[T](inner)
+  }
 
-// class BoolRowVal extends RowVal[Boolean]
-// class CharRowVal extends RowVal[Char]
-// class ByteRowVal extends RowVal[Byte]
+  implicit object BoolVal extends ConvertingRowVal[Boolean] {
+    def getVal(row: ResultSet, key: String) = row.getBoolean(key)
+  }
 
-// object RowVal {
-//   def apply[T]: RowVal[Boolean] = new BoolRowVal
-// }
+  implicit object ByteVal extends ConvertingRowVal[Byte] {
+    def getVal(row: ResultSet, key: String) = row.getByte(key)
+  }
+
+  implicit object CharVal extends ConvertingRowVal[Char] {
+    def getVal(row: ResultSet, key: String) = row.getByte(key).toChar
+  }
+
+  implicit object ShortVal extends ConvertingRowVal[Short] {
+    def getVal(row: ResultSet, key: String) = row.getShort(key)
+  }
+
+  implicit object IntVal extends ConvertingRowVal[Int] {
+    def getVal(row: ResultSet, key: String) = row.getInt(key)
+  }
+
+  implicit object LongVal extends ConvertingRowVal[Long] {
+    def getVal(row: ResultSet, key: String) = row.getLong(key)
+  }
+
+  implicit object DoubleVal extends ConvertingRowVal[Double] {
+    def getVal(row: ResultSet, key: String) = row.getDouble(key)
+  }
+
+  implicit object FloatVal extends ConvertingRowVal[Float] {
+    def getVal(row: ResultSet, key: String) = row.getFloat(key)
+  }
+
+  implicit object BigDecimalVal extends ConvertingRowVal[BigDecimal] {
+    def getVal(row: ResultSet, key: String) = row.getBigDecimal(key)
+  }
+
+  implicit object BytesVal extends ConvertingRowVal[Array[Byte]] {
+    def getVal(row: ResultSet, key: String) = row.getBytes(key)
+  }
+
+  implicit object StringVal extends ConvertingRowVal[String] {
+    def getVal(row: ResultSet, key: String) = row.getString(key)
+  }
+
+  implicit object DateVal extends ConvertingRowVal[Date] {
+    def getVal(row: ResultSet, key: String) = row.getDate(key)
+  }
+
+  implicit object TimeVal extends ConvertingRowVal[Time] {
+    def getVal(row: ResultSet, key: String) = row.getTime(key)
+  }
+
+  implicit object TimestampVal extends ConvertingRowVal[Timestamp] {
+    def getVal(row: ResultSet, key: String) = row.getTimestamp(key)
+  }
+}
+
+object RowExtractor extends Extractor {
+  type Container = ResultSet
+  type Key = String
+  type VE[T] = RowVal[T]
+}

@@ -13,6 +13,7 @@ case class OneFloat(v: Float)
 case class OneString(v: String)
 case class OneOpt(v: Option[Float])
 
+import MapVal._
 
 object MapExtractorSpec extends Specification {
   "extracts" in {
@@ -89,14 +90,14 @@ object MapExtractorSpec extends Specification {
 }
 
 
-// case class OneByteArray(v: Array[Byte])
+case class OneByteArray(v: Array[Byte])
 
-// object RowExtractorSpec extends Specification {
+object RowExtractorSpec extends Specification {
 
-//   val boolExtractor = RowExtractor(OneBool, "c1" -> RowVal[Boolean])
-//   //val byteArrayExtractor = RowExtractor(OneByteArray, "c1" -> RowVal[Array[Byte]])
+  val boolExtractor = RowExtractor(OneBool, "c1")
+  val byteArrayExtractor = RowExtractor(OneByteArray, "c1")
 
-//    "compiles" in {
+   "compiles" in {
 
-//   }
-// }
+  }
+}
