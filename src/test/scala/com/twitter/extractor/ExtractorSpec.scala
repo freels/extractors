@@ -13,7 +13,7 @@ case class OneFloat(v: Float)
 case class OneString(v: String)
 case class OneOpt(v: Option[Float])
 
-import MapVal._
+//import MapVal._
 
 object MapExtractorSpec extends Specification {
   "extracts" in {
