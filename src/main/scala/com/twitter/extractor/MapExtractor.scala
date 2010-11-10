@@ -1,8 +1,8 @@
 package com.twitter.extractor
 
-trait MapVal[T] extends ValExtractor[(String => Any), String, T]
+abstract class MapVal[T] extends ValExtractor[(String => Any), String, T]
 
-protected trait ConvertingMapVal[T] extends MapVal[T] {
+protected abstract class ConvertingMapVal[T] extends MapVal[T] {
   def convert(v: Any): T
   def apply(key: String) = (map: (String => Any)) => try {
     convert(map(key))
@@ -14,29 +14,7 @@ protected trait ConvertingMapVal[T] extends MapVal[T] {
   }
 }
 
-protected trait AnyRefConversions {
-  protected class AnyRefVal[T <: AnyRef] extends ConvertingMapVal[T] {
-    def convert(v: Any) = v.asInstanceOf[T]
-  }
-
-  implicit def anyRefVal[T <: AnyRef] = new AnyRefVal[T]
-}
-
-protected trait OptionConversions extends AnyRefConversions {
-  class OptionalMapVal[T](inner: MapVal[T]) extends MapVal[Option[T]] {
-    def apply(key: String) = (map: (String => Any)) => try {
-      Some(inner(key)(map)).asInstanceOf[Option[T]]
-    } catch {
-      case e: NoElementException => None
-    }
-  }
-
-  implicit def optionalMapVal[T, OptT <: Option[T]](implicit inner: MapVal[T]) = {
-    new OptionalMapVal[T](inner)
-  }
-}
-
-protected trait ValConversions extends OptionConversions {
+protected trait ValConversions {
   implicit object BoolVal extends ConvertingMapVal[Boolean] {
     def convert(v: Any) = v match { case b: Boolean => b == true }
   }
@@ -67,6 +45,24 @@ protected trait ValConversions extends OptionConversions {
 
   implicit object FloatVal extends ConvertingMapVal[Float] {
     def convert(v: Any) = v.asInstanceOf[{ def toFloat: Float }].toFloat
+  }
+
+  protected class AnyRefVal[T <: AnyRef] extends ConvertingMapVal[T] {
+    def convert(v: Any) = v.asInstanceOf[T]
+  }
+
+  implicit def anyRefVal[T <: AnyRef]: MapVal[T] = new AnyRefVal[T]
+
+  class OptionalMapVal[T](inner: MapVal[T]) extends MapVal[Option[T]] {
+    def apply(key: String) = (map: (String => Any)) => try {
+      Some(inner(key)(map)).asInstanceOf[Option[T]]
+    } catch {
+      case e: NoElementException => None
+    }
+  }
+
+  implicit def optionalMapVal[T](implicit inner: MapVal[T]): MapVal[Option[T]] = {
+    new OptionalMapVal[T](inner)
   }
 }
 

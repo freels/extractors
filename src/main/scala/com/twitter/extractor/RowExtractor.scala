@@ -3,10 +3,10 @@ package com.twitter.extractor
 import java.math.BigDecimal
 import java.sql.{ResultSet, Date, Time, Timestamp}
 
-trait RowVal[T] extends ValExtractor[ResultSet, String, T]
+trait RowVal[+T] extends ValExtractor[ResultSet, String, T]
 
 object RowVal {
-  trait ConvertingRowVal[T] extends RowVal[T] {
+  trait ConvertingRowVal[+T] extends RowVal[T] {
     def getVal(row: ResultSet, key: String): T
     def apply(key: String) = (row: ResultSet) => {
       val rv = getVal(row, key)
@@ -14,7 +14,7 @@ object RowVal {
     }
   }
 
-  class OptionalRowVal[T](inner: RowVal[T]) extends RowVal[Option[T]] {
+  class OptionalRowVal[+T](inner: RowVal[T]) extends RowVal[Option[T]] {
     def apply(key: String) = (row: ResultSet) => try {
       Some(inner(key)(row))
     } catch {
@@ -86,5 +86,5 @@ object RowVal {
 object RowExtractor extends Extractor {
   type Container = ResultSet
   type Key = String
-  type VE[T] = RowVal[T]
+  type VE[+T] = RowVal[T]
 }

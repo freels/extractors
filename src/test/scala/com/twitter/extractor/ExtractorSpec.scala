@@ -90,14 +90,14 @@ object MapExtractorSpec extends Specification {
 }
 
 
-case class OneByteArray(v: Array[Byte])
-
-object RowExtractorSpec extends Specification {
-
-  val boolExtractor = RowExtractor(OneBool, "c1")
-  val byteArrayExtractor = RowExtractor(OneByteArray, "c1")
-
-   "compiles" in {
-
-  }
-}
+// case class OneByteArray(v: Array[Byte])
+//
+// object RowExtractorSpec extends Specification {
+//
+//   val boolExtractor = RowExtractor(OneBool, "c1")
+//   val byteArrayExtractor = RowExtractor(OneByteArray, "c1")
+//
+//    "compiles" in {
+//
+//   }
+// }

@@ -7,7 +7,7 @@ class ExtractionException(desc: String, cause: Throwable) extends Exception(desc
 class TypeMismatchException(desc: String, cause: Throwable) extends ExtractionException(desc, cause)
 class NoElementException(desc: String) extends ExtractionException(desc, null)
 
-trait ValExtractor[Container, Key, Result] extends (Key => Container => Result) {
+trait ValExtractor[Container, Key, +Result] extends (Key => Container => Result) {
   protected def error(description: String): Nothing = throw new ExtractionException(description)
   protected def typeMismatch(key: String, cause: Throwable): Nothing =
     throw new TypeMismatchException("element at \"" + key + "\" is not the expected type.", cause)
