@@ -12,8 +12,8 @@ case class OneDouble(v: Double)
 case class OneFloat(v: Float)
 case class OneString(v: String)
 case class OneOpt(v: Option[Float])
+case class MapAndLong(v1: OneFloat, v2: Long)
 
-//import MapVal._
 
 object MapExtractorSpec extends Specification {
   "extracts" in {
@@ -85,6 +85,13 @@ object MapExtractorSpec extends Specification {
       extractor(Map("float" -> 30)) mustEqual OneOpt(Some(30))
       extractor(Map("notfloat" -> 30)) mustEqual OneOpt(None)
       extractor(Map("float" -> "foo")) must throwA[TypeMismatchException]
+    }
+
+    "inner extractor" in {
+      implicit val inner = MapExtractor(OneFloat, "inner_float")
+      val outer = MapExtractor(MapAndLong, "a_map", "a_long")
+
+      outer(Map("a_map" -> Map("inner_float" -> 1.0), "a_long" -> 2)) mustEqual MapAndLong(OneFloat(1), 2)
     }
   }
 }

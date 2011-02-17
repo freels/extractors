@@ -14,7 +14,15 @@ protected abstract class ConvertingMapVal[T] extends MapVal[T] {
   }
 }
 
-protected trait ValConversions {
+protected trait DefaultAnyRefConversion {
+  protected class AnyRefVal[T <: AnyRef] extends ConvertingMapVal[T] {
+    def convert(v: Any) = v.asInstanceOf[T]
+  }
+
+  implicit def anyRefVal[T <: AnyRef]: MapVal[T] = new AnyRefVal[T]
+}
+
+protected trait ValConversions extends DefaultAnyRefConversion {
   implicit object BoolVal extends ConvertingMapVal[Boolean] {
     def convert(v: Any) = v match { case b: Boolean => b == true }
   }
@@ -47,11 +55,13 @@ protected trait ValConversions {
     def convert(v: Any) = v.asInstanceOf[{ def toFloat: Float }].toFloat
   }
 
-  protected class AnyRefVal[T <: AnyRef] extends ConvertingMapVal[T] {
-    def convert(v: Any) = v.asInstanceOf[T]
+  class MapExtractor1Val[T,V1](implicit extractor: MapExtractor.Extractor1[T, V1]) extends ConvertingMapVal[T] {
+    def convert(v: Any) = extractor(v.asInstanceOf[MapExtractor.Container])
   }
 
-  implicit def anyRefVal[T <: AnyRef]: MapVal[T] = new AnyRefVal[T]
+  implicit def mapExtractor1Val[T, V1](implicit extractor: MapExtractor.Extractor1[T, V1]) = {
+    new MapExtractor1Val[T,V1]
+  }
 
   class OptionalMapVal[T](inner: MapVal[T]) extends MapVal[Option[T]] {
     def apply(key: String) = (map: (String => Any)) => try {
