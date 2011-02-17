@@ -20,7 +20,7 @@ trait InnerExtractors extends ExtractorFactory {
   extends ValExtractor[Container,Key,R] {
     val extractor = implicitly[E#Extractor[R]]
     def apply(k: Key) = (c: Container) => extractor(getInner(k, c))
-    def getInner[R](k: Key, c: Container): R
+    def getFromContainer[R](k: Key, c: Container): R
   }
 }
 

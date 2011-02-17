@@ -81,6 +81,6 @@ object MapExtractor extends ExtractorFactory with InnerExtractors {
 
 
   class MapExtractorVal[E <: ExtractorFactory, R : E#Extractor] extends ExtractorExtractor[E,R] with MapVal[R] {
-    def getInner[R](k: Key, c: Container) = c(k).asInstanceOf[R]
+    def getFromContainer[R](k: Key, c: Container) = c(k).asInstanceOf[R]
   }
 }
