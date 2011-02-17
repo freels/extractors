@@ -1,6 +1,6 @@
 package com.twitter.extractor
 
-abstract class MapVal[T] extends ValExtractor[(String => Any), String, T]
+trait MapVal[T] extends ValExtractor[(String => Any), String, T]
 
 protected abstract class ConvertingMapVal[T] extends MapVal[T] {
   def convert(v: Any): T
@@ -55,12 +55,8 @@ protected trait ValConversions extends DefaultAnyRefConversion {
     def convert(v: Any) = v.asInstanceOf[{ def toFloat: Float }].toFloat
   }
 
-  class MapExtractor1Val[T,V1](implicit extractor: MapExtractor.Extractor1[T, V1]) extends ConvertingMapVal[T] {
-    def convert(v: Any) = extractor(v.asInstanceOf[MapExtractor.Container])
-  }
-
-  implicit def mapExtractor1Val[T, V1](implicit extractor: MapExtractor.Extractor1[T, V1]) = {
-    new MapExtractor1Val[T,V1]
+  implicit def mapExtractorVal[E <: ExtractorFactory, T : E#Extractor] = {
+    new MapExtractor.MapExtractorVal[E,T]
   }
 
   class OptionalMapVal[T](inner: MapVal[T]) extends MapVal[Option[T]] {
@@ -78,8 +74,13 @@ protected trait ValConversions extends DefaultAnyRefConversion {
 
 object MapVal extends ValConversions
 
-object MapExtractor extends Extractor {
+object MapExtractor extends ExtractorFactory with InnerExtractors {
   type Container = String => Any
-  type Key = String
-  type VE[T] = MapVal[T]
+  type Key       = String
+  type VE[T]     = MapVal[T]
+
+
+  class MapExtractorVal[E <: ExtractorFactory, R : E#Extractor] extends ExtractorExtractor[E,R] with MapVal[R] {
+    def getInner[R](k: Key, c: Container) = c(k).asInstanceOf[R]
+  }
 }

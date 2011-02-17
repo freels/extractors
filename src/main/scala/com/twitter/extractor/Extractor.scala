@@ -14,17 +14,30 @@ trait ValExtractor[Container, Key, +Result] extends (Key => Container => Result)
   protected def noElement(key: String): Nothing = throw new NoElementException("element does not exist: \"" + key + "\"")
 }
 
-trait Extractor {
+
+trait InnerExtractors extends ExtractorFactory {
+  abstract class ExtractorExtractor[E <: ExtractorFactory, R : E#Extractor]
+  extends ValExtractor[Container,Key,R] {
+    val extractor = implicitly[E#Extractor[R]]
+    def apply(k: Key) = (c: Container) => extractor(getInner(k, c))
+    def getInner[R](k: Key, c: Container): R
+  }
+}
+
+trait ExtractorFactory {
   type Container
   type Key
   type VE[T] <: ValExtractor[Container, Key, T]
 
-  // def apply[Result, T1](constructor: (T1) => Result, c1: Key)(implicit ve1: VE[T1]) =
+  trait Extractor[R] extends (Container => R)
+
+  // def apply[R, T1](constructor: (T1) => R, c1: Key)(implicit ve1: VE[T1]) =
   //   new Extractor1(constructor, ve1(c1))
 
-  // class Extractor1[Result, T1](constructor: (T1) => Result, c1: (Container => T1)) {
+  // class Extractor1[R, T1](constructor: (T1) => R, c1: (Container => T1)) extends Extractor[R] {
   //   def apply(c: Container) = constructor(c1(c))
   // }
+
 
   <#list 1..22 as i>
 
@@ -33,14 +46,14 @@ trait Extractor {
   <#assign implicitParams><#list 1..i as j>ve${j}: VE[T${j}]<#if i != j>, </#if></#list></#assign>
   <#assign classArgs><#list 1..i as j>ve${j}(c${j})<#if i != j>, </#if></#list></#assign>
 
-  def apply[Result, ${paramTypes}](constructor: (${paramTypes}) => Result, ${params})(implicit ${implicitParams}) =
+  def apply[R, ${paramTypes}](constructor: (${paramTypes}) => R, ${params})(implicit ${implicitParams}) =
     new Extractor${i}(constructor, ${classArgs})
 
   <#assign applyArgs><#list 1..i as j>ve${j}(c${j})<#if i != j>, </#if></#list></#assign>
   <#assign classParams><#list 1..i as j>c${j}: (Container => T${j})<#if i != j>, </#if></#list></#assign>
   <#assign constructorArgs><#list 1..i as j>c${j}(c)<#if i != j>, </#if></#list></#assign>
 
-  class Extractor${i}[Result, ${paramTypes}](constructor: (${paramTypes}) => Result, ${classParams}) {
+  class Extractor${i}[R, ${paramTypes}](constructor: (${paramTypes}) => R, ${classParams}) extends Extractor[R] {
     def apply(c: Container) = constructor(${constructorArgs})
   }
 

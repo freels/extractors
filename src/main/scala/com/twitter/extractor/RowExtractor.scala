@@ -83,7 +83,7 @@ object RowVal {
   }
 }
 
-object RowExtractor extends Extractor {
+object RowExtractor extends ExtractorFactory {
   type Container = ResultSet
   type Key = String
   type VE[+T] = RowVal[T]
