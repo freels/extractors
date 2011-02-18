@@ -3,7 +3,16 @@ package com.twitter.extractors
 import org.specs.Specification
 import org.specs.mock.{ClassMocker, JMocker}
 
+import com.twitter.extractors.map.MapExtractor
+import com.twitter.extractors.sql.RowExtractor
+import com.twitter.extractors.json.JsonExtractor
+
 case class OneBool(v: Boolean)
+
+object OneBool extends (Boolean => OneBool) {
+  implicit val mapExtractor = MapExtractor(apply, "a_bool")
+}
+
 case class OneChar(v: Char)
 case class OneByte(v: Byte)
 case class OneShort(v: Short)
@@ -24,12 +33,9 @@ object MapExtractorSpec extends Specification {
     }
 
     "boolean" in {
-      val extractor = MapExtractor(OneBool, "bool")
-      extractor(Map("bool" -> true)) mustEqual OneBool(true)
-      //extractor(Map("bool" -> 0)) mustEqual OneBool(false)
-      //extractor(Map("bool" -> 1)) mustEqual OneBool(true)
-      extractor(Map("bool" -> "foo")) must throwA[TypeMismatchException]
-      extractor(Map("foo" -> true)) must throwA(new NoSuchElementException("key not found: bool"))
+      map.extract[OneBool](Map("a_bool" -> true)) mustEqual OneBool(true)
+      map.extract[OneBool](Map("a_bool" -> "foo")) must throwA[TypeMismatchException]
+      map.extract[OneBool](Map("foo" -> true)) must throwA(new NoSuchElementException("key not found: a_bool"))
     }
 
     "char" in {
