@@ -1,24 +1,37 @@
 package com.twitter.extractor
 
 import java.math.BigDecimal
-import java.sql.{ResultSet, Date, Time, Timestamp}
+import java.sql.{ResultSet, Date, Time, Timestamp, SQLException}
 
-trait RowVal[+T] extends ValExtractor[ResultSet, String, T]
+trait RowVal[+T] extends ValExtractor[ResultSet, String, T] {
+  def isDefinedAt(kr: ApplyType) = kr match { case (k, r) =>
+    try {
+      r.findColumn(k)
+      true
+    } catch {
+      case e: SQLException => false
+    }
+  }
+}
 
 object RowVal {
   trait ConvertingRowVal[+T] extends RowVal[T] {
     def getVal(row: ResultSet, key: String): T
-    def apply(key: String) = (row: ResultSet) => {
+    def apply(kr: ApplyType) = {
+      val (key, row) = kr
       val rv = getVal(row, key)
       if ( row.wasNull ) noElement(key) else rv
     }
   }
 
   class OptionalRowVal[+T](inner: RowVal[T]) extends RowVal[Option[T]] {
-    def apply(key: String) = (row: ResultSet) => try {
-      Some(inner(key)(row))
-    } catch {
-      case e: NoElementException => None
+    def apply(kr: ApplyType) = {
+      val (key, row) = kr
+      try {
+        Some(inner(key, row))
+      } catch {
+        case e: NoElementException => None
+      }
     }
   }
 

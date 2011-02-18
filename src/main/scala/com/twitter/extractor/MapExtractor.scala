@@ -1,16 +1,21 @@
 package com.twitter.extractor
 
-trait MapVal[T] extends ValExtractor[(String => Any), String, T]
+trait MapVal[T] extends ValExtractor[PartialFunction[String,Any], String, T] {
+  def isDefinedAt(km: ApplyType) = km match { case (k, m) => m.isDefinedAt(k) }
+}
 
 protected abstract class ConvertingMapVal[T] extends MapVal[T] {
   def convert(v: Any): T
-  def apply(key: String) = (map: (String => Any)) => try {
-    convert(map(key))
-  } catch {
-    case e: ClassCastException => typeMismatch(key, e)
-    case e: MatchError => typeMismatch(key, e)
-    case e: NoSuchMethodException => typeMismatch(key, e)
-    case e: NoSuchElementException => noElement(key)
+  def apply(km: ApplyType): T = {
+    val (key, map) = km
+    try {
+      convert(map(key))
+    } catch {
+      case e: ClassCastException => typeMismatch(key, e)
+      case e: MatchError => typeMismatch(key, e)
+      case e: NoSuchMethodException => typeMismatch(key, e)
+      case e: NoSuchElementException => noElement(key)
+    }
   }
 }
 
@@ -60,8 +65,8 @@ protected trait ValConversions extends DefaultAnyRefConversion {
   }
 
   class OptionalMapVal[T](inner: MapVal[T]) extends MapVal[Option[T]] {
-    def apply(key: String) = (map: (String => Any)) => try {
-      Some(inner(key)(map)).asInstanceOf[Option[T]]
+    def apply(keyMap: ApplyType) = try {
+      Some(inner(keyMap)).asInstanceOf[Option[T]]
     } catch {
       case e: NoElementException => None
     }
@@ -75,12 +80,12 @@ protected trait ValConversions extends DefaultAnyRefConversion {
 object MapVal extends ValConversions
 
 object MapExtractor extends ExtractorFactory with InnerExtractors {
-  type Container = String => Any
+  type Container = PartialFunction[String, Any]
   type Key       = String
   type VE[T]     = MapVal[T]
 
 
   class MapExtractorVal[E <: ExtractorFactory, R : E#Extractor] extends ExtractorExtractor[E,R] with MapVal[R] {
-    def getFromContainer[R](k: Key, c: Container) = c(k).asInstanceOf[R]
+    def getFromContainer[R](kc: ApplyType) = kc match { case (k,c) => c(k).asInstanceOf[R] }
   }
 }
