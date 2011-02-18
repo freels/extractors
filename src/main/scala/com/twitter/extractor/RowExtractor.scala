@@ -1,4 +1,4 @@
-package com.twitter.extractor
+package com.twitter.extractors
 
 import java.math.BigDecimal
 import java.sql.{ResultSet, Date, Time, Timestamp, SQLException}

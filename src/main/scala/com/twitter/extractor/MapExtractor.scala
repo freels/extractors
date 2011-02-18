@@ -1,4 +1,4 @@
-package com.twitter.extractor
+package com.twitter.extractors
 
 import exceptions._
 

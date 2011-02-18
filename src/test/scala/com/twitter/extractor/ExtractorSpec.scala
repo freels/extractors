@@ -1,4 +1,4 @@
-package com.twitter.extractor
+package com.twitter.extractors
 
 import org.specs.Specification
 import org.specs.mock.{ClassMocker, JMocker}

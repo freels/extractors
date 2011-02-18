@@ -1,4 +1,4 @@
-package com.twitter.extractor
+package com.twitter.extractors
 
 
 class ExtractionException(desc: String, cause: Throwable) extends Exception(desc, cause) {

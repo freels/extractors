@@ -1,4 +1,4 @@
-package com.twitter.extractor
+package com.twitter.extractors
 
 import org.codehaus.jackson.map.ObjectMapper
 import org.codehaus.jackson.JsonNode
