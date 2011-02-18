@@ -3,6 +3,8 @@ package com.twitter.extractor
 import java.math.BigDecimal
 import java.sql.{ResultSet, Date, Time, Timestamp, SQLException}
 
+import exceptions._
+
 
 object RowExtractor extends ExtractorFactory {
   type Container = ResultSet

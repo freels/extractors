@@ -1,12 +1,5 @@
 package com.twitter.extractor
 
-class ExtractionException(desc: String, cause: Throwable) extends Exception(desc, cause) {
-  def this(desc: String) = this(desc, null)
-}
-
-class TypeMismatchException(desc: String, cause: Throwable) extends ExtractionException(desc, cause)
-class NoElementException(desc: String) extends ExtractionException(desc, null)
-
 
 trait ExtractorFactory {
   type Container
@@ -14,19 +7,15 @@ trait ExtractorFactory {
 
   trait Extractor[R] extends (Container => R)
 
+
   trait ValExtractor[R] extends PartialFunction[(Key, Container), R] {
     def apply(k: Key, c: Container): R
     def isDefinedAt(k: Key, c: Container): Boolean
 
     def apply(kc: (Key, Container)): R = apply(kc._1, kc._2)
     def isDefinedAt(kc: (Key, Container)): Boolean = isDefinedAt(kc._1, kc._2)
-
-
-    protected def error(description: String): Nothing = throw new ExtractionException(description)
-    protected def typeMismatch(key: String, cause: Throwable): Nothing =
-      throw new TypeMismatchException("element at \"" + key + "\" is not the expected type.", cause)
-    protected def noElement(key: String): Nothing = throw new NoSuchElementException("key not found: " + key)
   }
+
 
   class LiftedValExtractor[T : ValExtractor] extends ValExtractor[Option[T]] {
     def apply(k: Key, c: Container) = implicitly[ValExtractor[T]].lift((k, c))
@@ -65,15 +54,15 @@ trait ExtractorFactory {
 }
 
 trait NestedExtractors extends ExtractorFactory {
-  def getFromContainer[R](k: Key, c: Container): R
+  def getFromContainer(k: Key, c: Container): Container
   def containerIsDefinedAt(k: Key, c: Container): Boolean
 
-  class ExtractorExtractor[E <: ExtractorFactory, R : E#Extractor] extends ValExtractor[R] {
-    val extractor = implicitly[E#Extractor[R]]
+  class ExtractorExtractor[R : Extractor] extends ValExtractor[R] {
+    val extractor = implicitly[Extractor[R]]
 
     def apply(k: Key, c: Container)       = extractor(getFromContainer(k, c))
     def isDefinedAt(k: Key, c: Container) = containerIsDefinedAt(k, c)
   }
 
-  implicit def extractorExtractorVal[E <: ExtractorFactory, T : E#Extractor] = new ExtractorExtractor[E,T]
+  implicit def extractorExtractorVal[T : Extractor] = new ExtractorExtractor[T]
 }

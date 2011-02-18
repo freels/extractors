@@ -1,11 +1,13 @@
 package com.twitter.extractor
 
+import exceptions._
+
 
 object MapExtractor extends ExtractorFactory with NestedExtractors with MapConversions {
   type Container = PartialFunction[String, Any]
   type Key       = String
 
-  def getFromContainer[R](k: Key, c: Container)  = c(k).asInstanceOf[R]
+  def getFromContainer(k: Key, c: Container)     = c(k).asInstanceOf[Container]
   def containerIsDefinedAt(k: Key, c: Container) = c.isDefinedAt(k)
 
   trait MapVal[T] extends MapExtractor.ValExtractor[T] {

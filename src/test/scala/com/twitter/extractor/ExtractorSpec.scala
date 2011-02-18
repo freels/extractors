@@ -1,6 +1,7 @@
 package com.twitter.extractor
 
 import org.specs.Specification
+import org.specs.mock.{ClassMocker, JMocker}
 
 case class OneBool(v: Boolean)
 case class OneChar(v: Char)
@@ -99,12 +100,45 @@ object MapExtractorSpec extends Specification {
 
 case class OneByteArray(v: Array[Byte])
 
-object RowExtractorSpec extends Specification {
+object RowExtractorSpec extends Specification with JMocker with ClassMocker {
+  import java.sql.ResultSet
+
+  val resultSet = mock[ResultSet]
 
   val boolExtractor = RowExtractor(OneBool, "c1")
   val byteArrayExtractor = RowExtractor(OneByteArray, "c1")
 
-  "compiles" in {
+  "unnested bool works" in {
+    expect {
+      one(resultSet).getBoolean("c1") willReturn true
+      one(resultSet).wasNull          willReturn false
+    }
 
+    boolExtractor(resultSet) mustEqual OneBool(true)
+  }
+
+  "bytearray works" in {
+    val bytes = Array(1,2,3).map(_.toByte)
+
+    expect {
+      one(resultSet).getBytes("c1") willReturn bytes
+      one(resultSet).wasNull        willReturn false
+    }
+
+    byteArrayExtractor(resultSet) mustEqual OneByteArray(bytes)
+  }
+}
+
+
+case class Structured(s: String, f: Double, i: Int, ol: OneLong)
+
+object JsonExtractorSpec extends Specification {
+    implicit val inner = JsonExtractor(OneLong, "a_long")
+    val extractor = JsonExtractor(Structured, "a_string", "a_double", "an_int", "an_object")
+
+  "works" in {
+    val json = """{ "a_string" : "foo", "an_int" : 1, "a_double" : 2.3, "an_object" : { "a_long" : 23 } }"""
+
+    extractor(json) mustEqual Structured("foo", 2.3, 1, OneLong(23L))
   }
 }
