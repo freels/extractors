@@ -3,7 +3,7 @@ package com.twitter.extractors
 import exceptions._
 
 
-package object map {
+object map {
 
   def extract [R: MapExtractor.Extractor](v: MapExtractor.Container): R = {
     val extractor = implicitly[MapExtractor.Extractor[R]]

@@ -6,7 +6,7 @@ import java.sql.{ResultSet, Date, Time, Timestamp, SQLException}
 import exceptions._
 
 
-package object sql {
+object sql {
 
   def extract [R: RowExtractor.Extractor](v: RowExtractor.Container): R = {
     val extractor = implicitly[RowExtractor.Extractor[R]]

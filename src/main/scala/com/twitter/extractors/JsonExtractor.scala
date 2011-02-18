@@ -6,7 +6,7 @@ import org.codehaus.jackson.JsonNode
 import exceptions._
 
 
-package object json {
+object json {
 
   def extract [R: JsonExtractor.Extractor](v: JsonExtractor.Container): R = {
     val extractor = implicitly[JsonExtractor.Extractor[R]]
