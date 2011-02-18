@@ -11,6 +11,7 @@ import com.twitter.extractors.json.JsonExtractor
 case class OneBool(v: Boolean)
 object OneBool extends (Boolean => OneBool) {
   implicit val fromMap = MapExtractor(apply, "bool")
+  implicit val fromRow = RowExtractor(OneBool, "c1")
 }
 
 case class OneChar(v: Char)
@@ -59,7 +60,7 @@ object OneOpt extends (Option[Float] => OneOpt) {
 }
 
 case class MapAndLong(v1: OneFloat, v2: Long)
-object MapAndLong extends Function2[OneFloat, Long, MapAndLong] {
+object MapAndLong extends ((OneFloat, Long) => MapAndLong) {
   implicit val fromMap = MapExtractor(apply, "one_float", "long")
 }
 
@@ -129,19 +130,28 @@ object MapExtractorSpec extends Specification {
       val map = Map("one_float" -> Map("float" -> 1.0), "long" -> 2)
       MapAndLong.fromMap(map) mustEqual MapAndLong(OneFloat(1), 2)
     }
+
+    "custom extractors" in {
+      implicit val oneFloatExtractor = MapExtractor(OneFloat, "alt_float")
+      val extractor = MapExtractor(MapAndLong, "of", "a_long")
+
+      val map = Map("of" -> Map("alt_float" -> 1.0), "a_long" -> 2)
+      extractor(map) mustEqual MapAndLong(OneFloat(1), 2)
+    }
   }
 }
 
 
 case class OneByteArray(v: Array[Byte])
+object OneByteArray extends (Array[Byte] => OneByteArray) {
+  implicit val fromMap = MapExtractor(apply, "byte_array")
+  implicit val fromRow = RowExtractor(OneByteArray, "c1")
+}
 
 object RowExtractorSpec extends Specification with JMocker with ClassMocker {
   import java.sql.ResultSet
 
   val resultSet = mock[ResultSet]
-
-  val boolExtractor = RowExtractor(OneBool, "c1")
-  val byteArrayExtractor = RowExtractor(OneByteArray, "c1")
 
   "unnested bool works" in {
     expect {
@@ -149,7 +159,7 @@ object RowExtractorSpec extends Specification with JMocker with ClassMocker {
       one(resultSet).wasNull          willReturn false
     }
 
-    boolExtractor(resultSet) mustEqual OneBool(true)
+    OneBool.fromRow(resultSet) mustEqual OneBool(true)
   }
 
   "bytearray works" in {
@@ -160,7 +170,7 @@ object RowExtractorSpec extends Specification with JMocker with ClassMocker {
       one(resultSet).wasNull        willReturn false
     }
 
-    byteArrayExtractor(resultSet) mustEqual OneByteArray(bytes)
+    OneByteArray.fromRow(resultSet) mustEqual OneByteArray(bytes)
   }
 }
 
