@@ -1,33 +1,29 @@
 package com.twitter.extractor
 
 
-object MapExtractor extends ExtractorFactory with NestedExtractors with ValConversions {
+object MapExtractor extends ExtractorFactory with NestedExtractors with MapConversions {
   type Container = PartialFunction[String, Any]
   type Key       = String
-  //type V[T]  MapVal[T]
 
-  def getFromContainer[R](kc: (Key, Container)) = kc match { case (k,c) => c(k).asInstanceOf[R] }
-  def containerIsDefinedAt(kc: (Key, Container)) = kc match { case (k,c) => c.isDefinedAt(k) }
+  def getFromContainer[R](k: Key, c: Container)  = c(k).asInstanceOf[R]
+  def containerIsDefinedAt(k: Key, c: Container) = c.isDefinedAt(k)
 
   trait MapVal[T] extends MapExtractor.ValExtractor[T] {
     def convert(v: Any): T
 
-    def isDefinedAt(km: (Key, Container)) = km match { case (k, m) => m.isDefinedAt(k) }
+    def isDefinedAt(k: Key, m: Container) = m.isDefinedAt(k)
 
-    def apply(km: (Key, Container)): T = {
-      val (key, map) = km
-      try {
-        convert(map(key))
-      } catch {
-        case e: ClassCastException => typeMismatch(key, e)
-        case e: MatchError => typeMismatch(key, e)
-        case e: NoSuchMethodException => typeMismatch(key, e)
-      }
+    def apply(key: Key, map: Container): T = try {
+      convert(map(key))
+    } catch {
+      case e: ClassCastException => typeMismatch(key, e)
+      case e: MatchError => typeMismatch(key, e)
+      case e: NoSuchMethodException => typeMismatch(key, e)
     }
   }
 }
 
-protected trait DefaultAnyConversion {
+protected trait DefaultMapAnyConversion {
   protected class AnyExtractor[T] extends MapExtractor.MapVal[T] {
     def convert(v: Any) = v.asInstanceOf[T]
   }
@@ -35,7 +31,7 @@ protected trait DefaultAnyConversion {
   implicit def anyVal[T]: MapExtractor.ValExtractor[T] = new AnyExtractor[T]
 }
 
-protected trait ValConversions extends DefaultAnyConversion {
+protected trait MapConversions extends DefaultMapAnyConversion {
   implicit object BoolVal extends MapExtractor.MapVal[Boolean] {
     def convert(v: Any) = v match { case b: Boolean => b == true }
   }

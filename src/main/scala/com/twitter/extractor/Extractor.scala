@@ -15,16 +15,22 @@ trait ExtractorFactory {
   trait Extractor[R] extends (Container => R)
 
   trait ValExtractor[R] extends PartialFunction[(Key, Container), R] {
+    def apply(k: Key, c: Container): R
+    def isDefinedAt(k: Key, c: Container): Boolean
+
+    def apply(kc: (Key, Container)): R = apply(kc._1, kc._2)
+    def isDefinedAt(kc: (Key, Container)): Boolean = isDefinedAt(kc._1, kc._2)
+
 
     protected def error(description: String): Nothing = throw new ExtractionException(description)
     protected def typeMismatch(key: String, cause: Throwable): Nothing =
       throw new TypeMismatchException("element at \"" + key + "\" is not the expected type.", cause)
-    protected def noElement(key: String): Nothing = throw new NoElementException("element does not exist: \"" + key + "\"")
+    protected def noElement(key: String): Nothing = throw new NoSuchElementException("key not found: " + key)
   }
 
   class LiftedValExtractor[T : ValExtractor] extends ValExtractor[Option[T]] {
-    def apply(kc: (Key, Container)) = implicitly[ValExtractor[T]].lift(kc)
-    def isDefinedAt(kc: (Key, Container)) = true
+    def apply(k: Key, c: Container) = implicitly[ValExtractor[T]].lift((k, c))
+    def isDefinedAt(k: Key, c: Container) = true
   }
 
   implicit def liftedValExtractor[T : ValExtractor] = new LiftedValExtractor[T]
@@ -59,14 +65,14 @@ trait ExtractorFactory {
 }
 
 trait NestedExtractors extends ExtractorFactory {
-  def getFromContainer[R](kc: (Key, Container)): R
-  def containerIsDefinedAt(kc: (Key, Container)): Boolean
+  def getFromContainer[R](k: Key, c: Container): R
+  def containerIsDefinedAt(k: Key, c: Container): Boolean
 
   class ExtractorExtractor[E <: ExtractorFactory, R : E#Extractor] extends ValExtractor[R] {
     val extractor = implicitly[E#Extractor[R]]
 
-    def apply(kc: (Key, Container))       = extractor(getFromContainer(kc))
-    def isDefinedAt(kc: (Key, Container)) = containerIsDefinedAt(kc)
+    def apply(k: Key, c: Container)       = extractor(getFromContainer(k, c))
+    def isDefinedAt(k: Key, c: Container) = containerIsDefinedAt(k, c)
   }
 
   implicit def extractorExtractorVal[E <: ExtractorFactory, T : E#Extractor] = new ExtractorExtractor[E,T]

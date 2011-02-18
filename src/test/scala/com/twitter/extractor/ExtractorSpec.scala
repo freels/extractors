@@ -28,7 +28,7 @@ object MapExtractorSpec extends Specification {
       //extractor(Map("bool" -> 0)) mustEqual OneBool(false)
       //extractor(Map("bool" -> 1)) mustEqual OneBool(true)
       extractor(Map("bool" -> "foo")) must throwA[TypeMismatchException]
-      extractor(Map("foo" -> true)) must throwA(new NoElementException("element does not exist: \"bool\""))
+      extractor(Map("foo" -> true)) must throwA(new NoSuchElementException("key not found: bool"))
     }
 
     "char" in {
@@ -97,14 +97,14 @@ object MapExtractorSpec extends Specification {
 }
 
 
-// case class OneByteArray(v: Array[Byte])
-//
-// object RowExtractorSpec extends Specification {
-//
-//   val boolExtractor = RowExtractor(OneBool, "c1")
-//   val byteArrayExtractor = RowExtractor(OneByteArray, "c1")
-//
-//    "compiles" in {
-//
-//   }
-// }
+case class OneByteArray(v: Array[Byte])
+
+object RowExtractorSpec extends Specification {
+
+  val boolExtractor = RowExtractor(OneBool, "c1")
+  val byteArrayExtractor = RowExtractor(OneByteArray, "c1")
+
+  "compiles" in {
+
+  }
+}
