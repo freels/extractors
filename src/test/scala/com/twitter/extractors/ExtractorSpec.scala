@@ -7,98 +7,127 @@ import com.twitter.extractors.map.MapExtractor
 import com.twitter.extractors.sql.RowExtractor
 import com.twitter.extractors.json.JsonExtractor
 
-case class OneBool(v: Boolean)
 
+case class OneBool(v: Boolean)
 object OneBool extends (Boolean => OneBool) {
-  implicit val mapExtractor = MapExtractor(apply, "a_bool")
+  implicit val fromMap = MapExtractor(apply, "bool")
 }
 
 case class OneChar(v: Char)
+object OneChar extends (Char => OneChar) {
+  implicit val fromMap = MapExtractor(apply, "char")
+}
+
 case class OneByte(v: Byte)
+object OneByte extends (Byte => OneByte) {
+  implicit val fromMap = MapExtractor(apply, "byte")
+}
+
 case class OneShort(v: Short)
+object OneShort extends (Short => OneShort) {
+  implicit val fromMap = MapExtractor(apply, "short")
+}
+
 case class OneInt(v: Int)
+object OneInt extends (Int => OneInt) {
+  implicit val fromMap = MapExtractor(apply, "int")
+}
+
 case class OneLong(v: Long)
+object OneLong extends (Long => OneLong) {
+  implicit val fromMap = MapExtractor(apply, "long")
+}
+
 case class OneDouble(v: Double)
+object OneDouble extends (Double => OneDouble) {
+  implicit val fromMap = MapExtractor(apply, "double")
+}
+
 case class OneFloat(v: Float)
+object OneFloat extends (Float => OneFloat) {
+  implicit val fromMap = MapExtractor(apply, "float")
+}
+
 case class OneString(v: String)
+object OneString extends (String => OneString) {
+  implicit val fromMap = MapExtractor(apply, "string")
+}
+
 case class OneOpt(v: Option[Float])
+object OneOpt extends (Option[Float] => OneOpt) {
+  implicit val fromMap = MapExtractor(apply, "float")
+}
+
 case class MapAndLong(v1: OneFloat, v2: Long)
+object MapAndLong extends Function2[OneFloat, Long, MapAndLong] {
+  implicit val fromMap = MapExtractor(apply, "one_float", "long")
+}
 
 
 object MapExtractorSpec extends Specification {
   "extracts" in {
     "object" in {
-      val extractor = MapExtractor(OneString, "str")
-      extractor(Map("str" -> "hi there")) mustEqual OneString("hi there")
+      map.extract[OneString](Map("string" -> "hi there")) mustEqual OneString("hi there")
     }
 
     "boolean" in {
-      map.extract[OneBool](Map("a_bool" -> true)) mustEqual OneBool(true)
-      map.extract[OneBool](Map("a_bool" -> "foo")) must throwA[TypeMismatchException]
-      map.extract[OneBool](Map("foo" -> true)) must throwA(new NoSuchElementException("key not found: a_bool"))
+      map.extract[OneBool](Map("bool" -> true)) mustEqual OneBool(true)
+      OneBool.fromMap(Map("bool" -> true)) mustEqual OneBool(true)
+      map.extract[OneBool](Map("bool" -> "foo")) must throwA[TypeMismatchException]
+      map.extract[OneBool](Map("foo" -> true)) must throwA(new NoSuchElementException("key not found: bool"))
     }
 
     "char" in {
-      val extractor = MapExtractor(OneChar, "char")
-      extractor(Map("char" -> 30)) mustEqual OneChar(30)
-      extractor(Map("char" -> 0)) mustEqual OneChar(0)
-      extractor(Map("char" -> "foo")) must throwA[TypeMismatchException]
+      OneChar.fromMap(Map("char" -> 30)) mustEqual OneChar(30)
+      OneChar.fromMap(Map("char" -> 0)) mustEqual OneChar(0)
+      OneChar.fromMap(Map("char" -> "foo")) must throwA[TypeMismatchException]
     }
 
     "byte" in {
-      val extractor = MapExtractor(OneByte, "byte")
-      extractor(Map("byte" -> 30)) mustEqual OneByte(30)
-      extractor(Map("byte" -> 0)) mustEqual OneByte(0)
-      extractor(Map("byte" -> "foo")) must throwA[TypeMismatchException]
+      OneByte.fromMap(Map("byte" -> 30)) mustEqual OneByte(30)
+      OneByte.fromMap(Map("byte" -> 0)) mustEqual OneByte(0)
+      OneByte.fromMap(Map("byte" -> "foo")) must throwA[TypeMismatchException]
     }
 
     "short" in {
-      val extractor = MapExtractor(OneShort, "short")
-      extractor(Map("short" -> 30)) mustEqual OneShort(30)
-      extractor(Map("short" -> 0)) mustEqual OneShort(0)
-      extractor(Map("short" -> "foo")) must throwA[TypeMismatchException]
+      OneShort.fromMap(Map("short" -> 30)) mustEqual OneShort(30)
+      OneShort.fromMap(Map("short" -> 0)) mustEqual OneShort(0)
+      OneShort.fromMap(Map("short" -> "foo")) must throwA[TypeMismatchException]
     }
 
     "int" in {
-      val extractor = MapExtractor(OneInt, "int")
-      extractor(Map("int" -> 30)) mustEqual OneInt(30)
-      extractor(Map("int" -> 0)) mustEqual OneInt(0)
-      extractor(Map("int" -> "foo")) must throwA[TypeMismatchException]
+      OneInt.fromMap(Map("int" -> 30)) mustEqual OneInt(30)
+      OneInt.fromMap(Map("int" -> 0)) mustEqual OneInt(0)
+      OneInt.fromMap(Map("int" -> "foo")) must throwA[TypeMismatchException]
     }
 
     "long" in {
-      val extractor = MapExtractor(OneLong, "long")
-      extractor(Map("long" -> 30)) mustEqual OneLong(30)
-      extractor(Map("long" -> 0)) mustEqual OneLong(0)
-      extractor(Map("long" -> "foo")) must throwA[TypeMismatchException]
+      OneLong.fromMap(Map("long" -> 30)) mustEqual OneLong(30)
+      OneLong.fromMap(Map("long" -> 0)) mustEqual OneLong(0)
+      OneLong.fromMap(Map("long" -> "foo")) must throwA[TypeMismatchException]
     }
 
     "double" in {
-      val extractor = MapExtractor(OneDouble, "double")
-      extractor(Map("double" -> 30)) mustEqual OneDouble(30)
-      extractor(Map("double" -> 0)) mustEqual OneDouble(0)
-      extractor(Map("double" -> "foo")) must throwA[TypeMismatchException]
+      OneDouble.fromMap(Map("double" -> 30)) mustEqual OneDouble(30)
+      OneDouble.fromMap(Map("double" -> 0)) mustEqual OneDouble(0)
+      OneDouble.fromMap(Map("double" -> "foo")) must throwA[TypeMismatchException]
     }
 
     "float" in {
-      val extractor = MapExtractor(OneFloat, "float")
-      extractor(Map("float" -> 30)) mustEqual OneFloat(30)
-      extractor(Map("float" -> 0)) mustEqual OneFloat(0)
-      extractor(Map("float" -> "foo")) must throwA[TypeMismatchException]
+      OneFloat.fromMap(Map("float" -> 30)) mustEqual OneFloat(30)
+      OneFloat.fromMap(Map("float" -> 0)) mustEqual OneFloat(0)
+      OneFloat.fromMap(Map("float" -> "foo")) must throwA[TypeMismatchException]
     }
 
     "option" in {
-      val extractor = MapExtractor(OneOpt, "float")
-      extractor(Map("float" -> 30)) mustEqual OneOpt(Some(30))
-      extractor(Map("notfloat" -> 30)) mustEqual OneOpt(None)
-      extractor(Map("float" -> "foo")) must throwA[TypeMismatchException]
+      OneOpt.fromMap(Map("float" -> 30)) mustEqual OneOpt(Some(30))
+      OneOpt.fromMap(Map("notfloat" -> 30)) mustEqual OneOpt(None)
+      OneOpt.fromMap(Map("float" -> "foo")) must throwA[TypeMismatchException]
     }
 
     "inner extractor" in {
-      implicit val inner = MapExtractor(OneFloat, "inner_float")
-      val outer = MapExtractor(MapAndLong, "a_map", "a_long")
-
-      outer(Map("a_map" -> Map("inner_float" -> 1.0), "a_long" -> 2)) mustEqual MapAndLong(OneFloat(1), 2)
+      val map = Map("one_float" -> Map("float" -> 1.0), "long" -> 2)
+      MapAndLong.fromMap(map) mustEqual MapAndLong(OneFloat(1), 2)
     }
   }
 }
