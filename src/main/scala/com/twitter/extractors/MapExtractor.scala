@@ -15,13 +15,10 @@ object map {
     type Container = PartialFunction[String, Any]
     type Key       = String
 
-    def getFromContainer(k: Key, c: Container)     = c(k).asInstanceOf[Container]
-    def containerIsDefinedAt(k: Key, c: Container) = c.isDefinedAt(k)
+    def getFromContainer(k: Key, c: Container) = c(k).asInstanceOf[Container]
 
     trait MapVal[T] extends MapExtractor.ValExtractor[T] {
       def convert(v: Any): T
-
-      def isDefinedAt(k: Key, m: Container) = m.isDefinedAt(k)
 
       def apply(key: Key, map: Container): T = try {
         convert(map(key))

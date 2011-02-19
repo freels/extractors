@@ -37,6 +37,7 @@ object OneInt extends (Int => OneInt) {
 case class OneLong(v: Long)
 object OneLong extends (Long => OneLong) {
   implicit val fromMap = MapExtractor(apply, "long")
+  implicit val fromJson = JsonExtractor(OneLong, "long")
 }
 
 case class OneDouble(v: Double)
@@ -176,14 +177,15 @@ object RowExtractorSpec extends Specification with JMocker with ClassMocker {
 
 
 case class Structured(s: String, f: Double, i: Int, ol: OneLong)
+object Structured extends ((String, Double, Int, OneLong) => Structured) {
+  implicit val fromJson = JsonExtractor(Structured, "string", "double", "int", "one_long")
+  val fromUncheckedJson = JsonExtractor(Structured, "string", "double", "int", "one_long")
+}
 
 object JsonExtractorSpec extends Specification {
-    implicit val inner = JsonExtractor(OneLong, "a_long")
-    val extractor = JsonExtractor(Structured, "a_string", "a_double", "an_int", "an_object")
-
   "works" in {
-    val json = """{ "a_string" : "foo", "an_int" : 1, "a_double" : 2.3, "an_object" : { "a_long" : 23 } }"""
+    val json = """{ "string" : "foo", "int" : 1, "double" : 2.3, "one_long" : { "long" : 23 } }"""
 
-    extractor(json) mustEqual Structured("foo", 2.3, 1, OneLong(23L))
+    Structured.fromJson(json) mustEqual Structured("foo", 2.3, 1, OneLong(23L))
   }
 }

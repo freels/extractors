@@ -21,12 +21,12 @@ object sql {
     trait RowVal[T] extends ValExtractor[T] {
       def getVal(key: String, row: ResultSet): T
 
-      def isDefinedAt(key: Key, row: Container) = try {
-        getVal(key, row)
-        if (row.wasNull) false else true
-      } catch {
-        case e: SQLException => false
-      }
+      // def isDefinedAt(key: Key, row: Container) = try {
+      //   getVal(key, row)
+      //   if (row.wasNull) false else true
+      // } catch {
+      //   case e: SQLException => false
+      // }
 
       def apply(key: Key, row: Container) = {
         val rv = getVal(key, row)
