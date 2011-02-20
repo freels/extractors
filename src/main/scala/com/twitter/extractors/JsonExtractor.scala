@@ -19,9 +19,15 @@ object JsonRoot {
   implicit def parsed2Json(p: JsonNode) = new JsonRoot(p)
 }
 
-object JsonExtractor extends ExtractorFactory with NestedExtractors {
+object JsonObjectExtractor extends JsonExtractor {
+  //type Key = String
+}
+
+//object JsonArrayExtractor extends JsonExtractor with SeqLikeExtractors
+
+trait JsonExtractor extends ExtractorFactory with NestedExtractors {
   type Container = JsonRoot
-  type Key       = String
+  type Key = String
 
   def getFromContainer[R](e: Extractor[R], k: Key, j: Container) = {
     j.root.get(k) match {
@@ -107,9 +113,9 @@ object Main {
   case class Retweet(parentStatusId: Long, sourceStatusId: Long)
   case class Status(id: Long, userId: Long, inReplyTo: InReplyTo, retweet: Retweet)
 
-  implicit val retweetFromJson   = JsonExtractor(Retweet, "parent_status_id", "source_status_id")
-  implicit val inReplyToFromJson = JsonExtractor(InReplyTo, "status_id", "user_id")
-  implicit val statusFromJson    = JsonExtractor(Status, "id", "user_id", "in_reply_to", "retweet")
+  implicit val retweetFromJson   = JsonObjectExtractor(Retweet, "parent_status_id", "source_status_id")
+  implicit val inReplyToFromJson = JsonObjectExtractor(InReplyTo, "status_id", "user_id")
+  implicit val statusFromJson    = JsonObjectExtractor(Status, "id", "user_id", "in_reply_to", "retweet")
 
   val mapper = new ObjectMapper
 

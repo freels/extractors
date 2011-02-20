@@ -5,7 +5,7 @@ import org.specs.mock.{ClassMocker, JMocker}
 
 import com.twitter.extractors.map.MapExtractor
 import com.twitter.extractors.sql.RowExtractor
-import com.twitter.extractors.json.JsonExtractor
+import com.twitter.extractors.json.JsonObjectExtractor
 
 
 case class OneBool(v: Boolean)
@@ -37,7 +37,7 @@ object OneInt extends (Int => OneInt) {
 case class OneLong(v: Long)
 object OneLong extends (Long => OneLong) {
   implicit val fromMap = MapExtractor(apply, "long")
-  implicit val fromJson = JsonExtractor(OneLong, "long")
+  implicit val fromJson = JsonObjectExtractor(OneLong, "long")
 }
 
 case class OneDouble(v: Double)
@@ -69,14 +69,14 @@ object MapAndLong extends ((OneFloat, Long) => MapAndLong) {
 object MapExtractorSpec extends Specification {
   "extracts" in {
     "object" in {
-      map.extract[OneString](Map("string" -> "hi there")) mustEqual OneString("hi there")
+      OneString.fromMap(Map("string" -> "hi there")) mustEqual OneString("hi there")
     }
 
     "boolean" in {
-      map.extract[OneBool](Map("bool" -> true)) mustEqual OneBool(true)
       OneBool.fromMap(Map("bool" -> true)) mustEqual OneBool(true)
-      map.extract[OneBool](Map("bool" -> "foo")) must throwA[TypeMismatchException]
-      map.extract[OneBool](Map("foo" -> true)) must throwA(new NoSuchElementException("key not found: bool"))
+      OneBool.fromMap(Map("bool" -> true)) mustEqual OneBool(true)
+      OneBool.fromMap(Map("bool" -> "foo")) must throwA[TypeMismatchException]
+      OneBool.fromMap(Map("foo" -> true)) must throwA(new NoSuchElementException("key not found: bool"))
     }
 
     "char" in {
@@ -178,8 +178,8 @@ object RowExtractorSpec extends Specification with JMocker with ClassMocker {
 
 case class Structured(s: String, f: Double, i: Int, ol: OneLong)
 object Structured extends ((String, Double, Int, OneLong) => Structured) {
-  implicit val fromJson = JsonExtractor(Structured, "string", "double", "int", "one_long")
-  val fromUncheckedJson = JsonExtractor(Structured, "string", "double", "int", "one_long")
+  implicit val fromJson = JsonObjectExtractor(Structured, "string", "double", "int", "one_long")
+  val fromUncheckedJson = JsonObjectExtractor(Structured, "string", "double", "int", "one_long")
 }
 
 object JsonExtractorSpec extends Specification {
