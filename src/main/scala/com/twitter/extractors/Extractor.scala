@@ -12,10 +12,10 @@ trait ExtractorFactory {
     def apply(k: Key, c: Container): R
   }
 
-
   class LiftedValExtractor[T : ValExtractor] extends ValExtractor[Option[T]] {
+    val inner = implicitly[ValExtractor[T]]
+
     def apply(k: Key, c: Container) = try {
-      val inner = implicitly[ValExtractor[T]]
       Some(inner(k,c))
     } catch {
       case e: NoSuchElementException => None
@@ -54,12 +54,12 @@ trait ExtractorFactory {
 }
 
 trait NestedExtractors extends ExtractorFactory {
-  def getFromContainer(k: Key, c: Container): Container
+  def getFromContainer[R](e: Extractor[R], k: Key, c: Container): R
 
   class ExtractorExtractor[R : Extractor] extends ValExtractor[R] {
     val extractor = implicitly[Extractor[R]]
 
-    def apply(k: Key, c: Container)       = extractor(getFromContainer(k, c))
+    def apply(k: Key, c: Container) = getFromContainer(extractor, k, c)
   }
 
   implicit def extractorExtractorVal[T : Extractor] = new ExtractorExtractor[T]
