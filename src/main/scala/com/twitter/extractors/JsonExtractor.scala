@@ -1,4 +1,5 @@
 package com.twitter.extractors
+package json
 
 import org.codehaus.jackson.map.ObjectMapper
 import org.codehaus.jackson.JsonNode
@@ -6,77 +7,158 @@ import org.codehaus.jackson.JsonNode
 import exceptions._
 
 
-object json {
+class JsonRoot(val root: JsonNode)
 
-  def extract [R: JsonExtractor.Extractor](v: JsonExtractor.Container): R = {
-    val extractor = implicitly[JsonExtractor.Extractor[R]]
-    extractor(v)
-  }
+object JsonRoot {
+  val mapper = new ObjectMapper
 
+  protected def parse(s: String) = mapper.readValue(s, classOf[JsonNode])
 
-  sealed abstract class JsonRoot {
-    def root: JsonNode
-  }
+  implicit def string2Json(s: String) = new JsonRoot(parse(s))
+  implicit def bytes2Json(b: Array[Byte]) = new JsonRoot(parse(new String(b, "UTF-8")))
+  implicit def parsed2Json(p: JsonNode) = new JsonRoot(p)
+}
 
-  class StringJsonRoot(unparsed: String) extends JsonRoot {
-    lazy val root = JsonRoot.mapper.readValue(unparsed, classOf[JsonNode])
-  }
+object JsonExtractor extends ExtractorFactory with NestedExtractors {
+  type Container = JsonRoot
+  type Key       = String
 
-  class ParsedJsonRoot(val root: JsonNode) extends JsonRoot
-
-  object JsonRoot {
-    val mapper = new ObjectMapper
-
-    implicit def string2Json(s: String) = new StringJsonRoot(s)
-    implicit def bytes2Json(b: Array[Byte]) = new StringJsonRoot(new String(b, "UTF-8"))
-    implicit def parsed2Json(p: JsonNode) = new ParsedJsonRoot(p)
-  }
-
-  object JsonExtractor extends ExtractorFactory with NestedExtractors {
-    type Container = JsonRoot
-    type Key       = String
-
-    def getFromContainer(k: Key, j: Container): Container = {
-      val node = j.root.path(k)
-      if (node.isObject) new ParsedJsonRoot(node) else noElement(k)
+  def getFromContainer[R](e: Extractor[R], k: Key, j: Container) = {
+    j.root.get(k) match {
+      case null            => noElement(k)
+      case n if n.isObject => e(new JsonRoot(n))
+      case _               => typeMismatch(k, null)
     }
+  }
 
-    def containerIsDefinedAt(k: Key, j: Container) = j.root.path(k).isObject
+  trait JsonVal[T] extends ValExtractor[T] {
+    protected def isType(node: JsonNode): Boolean
+    protected def cast(node: JsonNode): T
 
-    trait JsonVal[T] extends ValExtractor[T] {
-      def cast(node: JsonNode): Option[T]
+    def apply(key: Key, j: Container) = {
+      j.root.get(key) match {
+        case null           => noElement(key)
+        case n if isType(n) => cast(n)
+        case _              => typeMismatch(key, null)
+      }
+    }
+  }
 
-      def isDefinedAt(key: Key, j: Container) = j.root.path(key).isMissingNode
+  implicit object BoolVal extends JsonVal[Boolean] {
+    protected def isType(n: JsonNode) = n.isBoolean || n.isNumber
+    protected def cast(n: JsonNode)   = n.getValueAsBoolean
+  }
 
-      def apply(key: Key, j: Container) = {
-        val rv = j.root.path(key)
-        if (rv.isMissingNode) noElement(key)
-        else cast(rv) getOrElse typeMismatch(key, null)
+  trait NumericJsonVal[T] extends JsonVal[T] {
+    protected def isType(n: JsonNode) = n.isNumber
+  }
+
+  implicit object IntVal extends NumericJsonVal[Int] {
+    protected def cast(n: JsonNode) = n.getIntValue
+  }
+
+  implicit object ShortVal extends NumericJsonVal[Short] {
+    protected def cast(n: JsonNode) = n.getIntValue.toShort
+  }
+
+  implicit object LongVal extends NumericJsonVal[Long] {
+    protected def cast(n: JsonNode) = n.getLongValue
+  }
+
+  implicit object DoubleVal extends NumericJsonVal[Double] {
+    protected def cast(n: JsonNode) = n.getDoubleValue
+  }
+
+  implicit object FloatVal extends NumericJsonVal[Float] {
+    protected def cast(n: JsonNode) = n.getDoubleValue.toFloat
+  }
+
+  implicit object StringVal extends JsonVal[String] {
+    override def apply(key: Key, j: Container) = {
+      j.root.get(key) match {
+        case null => noElement(key)
+        case n => n.getValueAsText match {
+          case null => typeMismatch(key, null)
+          case t    => t
+        }
       }
     }
 
-    implicit object BoolVal extends JsonVal[Boolean] {
-      def cast(node: JsonNode) = if (node.isBoolean) Some(node.getValueAsBoolean) else None
+    // unused, since apply is overridden
+    protected def isType(n: JsonNode) = true
+    protected def cast(n: JsonNode)   = n.getValueAsText
+  }
+}
+
+object Main {
+  import org.codehaus.jackson.map.ObjectMapper
+  import org.codehaus.jackson.JsonNode
+
+  def time[R](f: => R) = {
+    val start = System.currentTimeMillis
+    val rv = f
+    val end = System.currentTimeMillis
+
+    println(end - start)
+    rv
+  }
+
+  case class InReplyTo(statusId: Long, userid: Long)
+  case class Retweet(parentStatusId: Long, sourceStatusId: Long)
+  case class Status(id: Long, userId: Long, inReplyTo: InReplyTo, retweet: Retweet)
+
+  implicit val retweetFromJson   = JsonExtractor(Retweet, "parent_status_id", "source_status_id")
+  implicit val inReplyToFromJson = JsonExtractor(InReplyTo, "status_id", "user_id")
+  implicit val statusFromJson    = JsonExtractor(Status, "id", "user_id", "in_reply_to", "retweet")
+
+  val mapper = new ObjectMapper
+
+  def main(argv: Array[String]) {
+    (1 to 1000) foreach { i => runIt(300000) }
+  }
+
+  def runIt(iterations: Int) {
+    val json = """{
+      "id": 123,
+      "user_id": 456,
+      "in_reply_to": {
+        "status_id": 125,
+        "user_id": 458
+      },
+      "retweet": {
+        "parent_status_id": 124,
+        "source_status_id": 457
+      }
+    }"""
+
+    print("extractor: ")
+    time {
+      (1 to iterations) foreach { i =>
+        statusFromJson(json)
+      }
     }
 
-    implicit object IntVal extends JsonVal[Int] {
-      def cast(node: JsonNode) = if (node.isInt) Some(node.getValueAsInt) else None
-    }
+    print("mapper:    ")
 
-    implicit object LongVal extends JsonVal[Long] {
-      def cast(node: JsonNode) = if (node.isInt || node.isLong) Some(node.getValueAsLong) else None
-    }
+    time {
+      (1 to iterations) foreach { i =>
+        val node      = mapper.readValue(json, classOf[JsonNode])
+        val rtNode    = node.get("retweet")
+        val replyNode = node.get("in_reply_to")
 
-    implicit object DoubleVal extends JsonVal[Double] {
-      def cast(node: JsonNode) = if (node.isDouble) Some(node.getValueAsDouble) else None
-    }
-
-    implicit object FloatVal extends JsonVal[Float] {
-      def cast(node: JsonNode) = if (node.isDouble) Some(node.getValueAsDouble.toFloat) else None
-    }
-
-    implicit object StringVal extends JsonVal[String] {
-      def cast(node: JsonNode) = if (node.isTextual) Some(node.getValueAsText) else None
+        Status(
+          node.get("id").getLongValue,
+          node.get("user_id").getLongValue,
+          InReplyTo(
+            replyNode.get("status_id").getLongValue,
+            replyNode.get("user_id").getLongValue
+          ),
+          Retweet(
+            rtNode.get("parent_status_id").getLongValue,
+            rtNode.get("source_status_id").getLongValue
+          )
+        )
+      }
     }
   }
 }
