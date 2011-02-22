@@ -6,81 +6,102 @@ import java.sql.{ResultSet, Date, Time, Timestamp, SQLException}
 
 import exceptions._
 
+class RowContext(rs: ResultSet, path: Seq[String]) {
+  def this(rs: ResultSet) = this(rs, Seq())
 
-object RowExtractor extends ExtractorFactory {
-  type Container = ResultSet
-  type Key       = String
-
-  trait RowVal[T] extends ValExtractor[T] {
-    def getVal(key: String, row: ResultSet): T
-
-    // def isDefinedAt(key: Key, row: Container) = try {
-    //   getVal(key, row)
-    //   if (row.wasNull) false else true
-    // } catch {
-    //   case e: SQLException => false
-    // }
-
-    def apply(key: Key, row: Container) = {
-      val rv = getVal(key, row)
-      if (row.wasNull) noElement(key) else rv
-    }
+  private lazy val colName = {
+    assert(!path.isEmpty)
+    path.mkString("_")
   }
 
+  def /(segment: String) = new RowContext(rs, path :+ segment)
+
+  def unlessNull[T](t: => T): T = {
+    val rv = t
+    if (rs.wasNull) noElement(colName) else rv
+  }
+
+  def getBoolean    = unlessNull { rs.getBoolean(colName) }
+  def getByte       = unlessNull { rs.getByte(colName) }
+  def getShort      = unlessNull { rs.getShort(colName) }
+  def getInt        = unlessNull { rs.getShort(colName) }
+  def getLong       = unlessNull { rs.getLong(colName) }
+  def getDouble     = unlessNull { rs.getDouble(colName) }
+  def getFloat      = unlessNull { rs.getFloat(colName) }
+  def getBigDecimal = unlessNull { rs.getBigDecimal(colName) }
+  def getBytes      = unlessNull { rs.getBytes(colName) }
+  def getString     = unlessNull { rs.getString(colName) }
+  def getDate       = unlessNull { rs.getDate(colName) }
+  def getTime       = unlessNull { rs.getTime(colName) }
+  def getTimestamp  = unlessNull { rs.getTimestamp(colName) }
+}
+
+
+
+object RowExtractor extends ExtractorFactory with NestedExtractors {
+  type Root      = ResultSet
+  type Container = RowContext
+  type Key       = String
+
+  def liftRoot(r: Root) = new RowContext(r)
+  def getWithKey(k: Key, c: Container) = c / k
+
+  trait RowVal[T] extends ValExtractor[T]
+
   implicit object BoolVal extends RowVal[Boolean] {
-    def getVal(key: String, row: ResultSet) = row.getBoolean(key)
+    def apply(c: Container) = c.getBoolean
   }
 
   implicit object ByteVal extends RowVal[Byte] {
-    def getVal(key: String, row: ResultSet) = row.getByte(key)
+    def apply(c: Container) = c.getByte
   }
 
   implicit object CharVal extends RowVal[Char] {
-    def getVal(key: String, row: ResultSet) = row.getByte(key).toChar
+    def apply(c: Container) = c.getByte.toChar
   }
 
   implicit object ShortVal extends RowVal[Short] {
-    def getVal(key: String, row: ResultSet) = row.getShort(key)
+    def apply(c: Container) = c.getShort
   }
 
   implicit object IntVal extends RowVal[Int] {
-    def getVal(key: String, row: ResultSet) = row.getInt(key)
+    def apply(c: Container) = c.getInt
   }
 
   implicit object LongVal extends RowVal[Long] {
-    def getVal(key: String, row: ResultSet) = row.getLong(key)
+    def apply(c: Container) = c.getLong
   }
 
   implicit object DoubleVal extends RowVal[Double] {
-    def getVal(key: String, row: ResultSet) = row.getDouble(key)
+    def apply(c: Container) = c.getDouble
   }
 
   implicit object FloatVal extends RowVal[Float] {
-    def getVal(key: String, row: ResultSet) = row.getFloat(key)
+    def apply(c: Container) = c.getFloat
   }
 
   implicit object BigDecimalVal extends RowVal[BigDecimal] {
-    def getVal(key: String, row: ResultSet) = row.getBigDecimal(key)
+    def apply(c: Container) = c.getBigDecimal
   }
 
   implicit object BytesVal extends RowVal[Array[Byte]] {
-    def getVal(key: String, row: ResultSet) = row.getBytes(key)
+    def apply(c: Container) = c.getBytes
   }
 
   implicit object StringVal extends RowVal[String] {
-    def getVal(key: String, row: ResultSet) = row.getString(key)
+    def apply(c: Container) = c.getString
   }
 
   implicit object DateVal extends RowVal[Date] {
-    def getVal(key: String, row: ResultSet) = row.getDate(key)
+    def apply(c: Container) = c.getDate
   }
 
   implicit object TimeVal extends RowVal[Time] {
-    def getVal(key: String, row: ResultSet) = row.getTime(key)
+    def apply(c: Container) = c.getTime
   }
 
   implicit object TimestampVal extends RowVal[Timestamp] {
-    def getVal(key: String, row: ResultSet) = row.getTimestamp(key)
+    def apply(c: Container) = c.getTimestamp
   }
 }
 

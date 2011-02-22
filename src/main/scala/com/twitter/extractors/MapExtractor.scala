@@ -3,27 +3,7 @@ package map
 
 import exceptions._
 
-
-object MapExtractor extends ExtractorFactory with NestedExtractors with MapConversions {
-  type Container = PartialFunction[String, Any]
-  type Key       = String
-
-  def getFromContainer[R](e: Extractor[R], k: Key, c: Container) = e(c(k).asInstanceOf[Container])
-
-  trait MapVal[T] extends MapExtractor.ValExtractor[T] {
-    def convert(v: Any): T
-
-    def apply(key: Key, map: Container): T = try {
-      convert(map(key))
-    } catch {
-      case e: ClassCastException => typeMismatch(key, e)
-      case e: MatchError => typeMismatch(key, e)
-      case e: NoSuchMethodException => typeMismatch(key, e)
-    }
-  }
-}
-
-protected trait DefaultMapAnyConversion {
+protected trait MapExtractorLow {
   protected class AnyExtractor[T] extends MapExtractor.MapVal[T] {
     def convert(v: Any) = v.asInstanceOf[T]
   }
@@ -31,7 +11,25 @@ protected trait DefaultMapAnyConversion {
   implicit def anyVal[T]: MapExtractor.ValExtractor[T] = new AnyExtractor[T]
 }
 
-protected trait MapConversions extends DefaultMapAnyConversion {
+object MapExtractor extends ExtractorFactory with NestedExtractors with MapExtractorLow {
+  type Root      = PartialFunction[String, Any]
+  type Container = Any
+  type Key       = String
+
+
+  def liftRoot(r: Root) = r.asInstanceOf[Any]
+  def getWithKey(k: Key, c: Container) = c.asInstanceOf[Root](k)
+
+  trait MapVal[T] extends MapExtractor.ValExtractor[T] {
+    def convert(v: Any): T
+
+    def apply(c: Container): T = try { convert(c) } catch {
+      case e: ClassCastException => typeMismatch()
+      case e: MatchError => typeMismatch()
+      case e: NoSuchMethodException => typeMismatch()
+    }
+  }
+
   implicit object BoolVal extends MapExtractor.MapVal[Boolean] {
     def convert(v: Any) = v match { case b: Boolean => b == true }
   }

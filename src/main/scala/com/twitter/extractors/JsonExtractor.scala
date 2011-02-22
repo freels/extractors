@@ -19,34 +19,25 @@ object JsonRoot {
   implicit def parsed2Json(p: JsonNode) = new JsonRoot(p)
 }
 
-object JsonObjectExtractor extends JsonExtractor {
-  //type Key = String
-}
-
-//object JsonArrayExtractor extends JsonExtractor with SeqLikeExtractors
-
-trait JsonExtractor extends ExtractorFactory with NestedExtractors {
-  type Container = JsonRoot
+object JsonObjectExtractor extends ExtractorFactory with NestedExtractors {
+  type Root = JsonRoot
+  type Container = JsonNode
   type Key = String
 
-  def getFromContainer[R](e: Extractor[R], k: Key, j: Container) = {
-    j.root.get(k) match {
-      case null            => noElement(k)
-      case n if n.isObject => e(new JsonRoot(n))
-      case _               => typeMismatch(k, null)
-    }
+  def liftRoot(r: Root) = r.root
+
+  def getWithKey(k: Key, c: Container) = c.get(k) match {
+    case null => noElement(k)
+    case n    => n
   }
 
   trait JsonVal[T] extends ValExtractor[T] {
     protected def isType(node: JsonNode): Boolean
     protected def cast(node: JsonNode): T
 
-    def apply(key: Key, j: Container) = {
-      j.root.get(key) match {
-        case null           => noElement(key)
-        case n if isType(n) => cast(n)
-        case _              => typeMismatch(key, null)
-      }
+    def apply(c: Container) = c match {
+      case n if isType(n) => cast(n)
+      case _              => typeMismatch()
     }
   }
 
@@ -80,14 +71,9 @@ trait JsonExtractor extends ExtractorFactory with NestedExtractors {
   }
 
   implicit object StringVal extends JsonVal[String] {
-    override def apply(key: Key, j: Container) = {
-      j.root.get(key) match {
-        case null => noElement(key)
-        case n => n.getValueAsText match {
-          case null => typeMismatch(key, null)
-          case t    => t
-        }
-      }
+    override def apply(c: Container) = c.getValueAsText match {
+      case null => typeMismatch()
+      case t    => t
     }
 
     // unused, since apply is overridden

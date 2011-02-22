@@ -10,7 +10,7 @@ class NoElementException(desc: String) extends ExtractionException(desc, null)
 
 package object exceptions {
   def error(description: String): Nothing = throw new ExtractionException(description)
-  def typeMismatch(key: String, cause: Throwable): Nothing =
-    throw new TypeMismatchException("element at \"" + key + "\" is not the expected type.", cause)
+  def typeMismatch(): Nothing =
+    throw new TypeMismatchException("element is not the expected type.", null)
   def noElement(key: String): Nothing = throw new NoSuchElementException("key not found: " + key)
 }
