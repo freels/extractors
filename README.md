@@ -10,15 +10,8 @@ Quick and easy extraction of structured data from unstructured data
 
     scala> val personFromJson = JsonObjectExtractor(Person, "first", "last", "middle_initial", "age")
 
-    scala> val json1 = """{ "first": "Alice", "last": "Smith", "middle_initial": "B", "age": 35 }"""
-
-    scala> val json2 = """{ "first": "Bob", "last": "Jones", "age": 22 }"""
-
-    scala> personFromJson(json1)
+    scala> personFromJson("""{ "first": "Alice", "last": "Smith", "middle_initial": "B", "age": 35 }""")
     res0: Person = Person(Alice,Smith,Some(B),35)
-
-    scala> personFromJson(json2)
-    res1: Person = Person(Bob,Jones,None,22)
 
 ### Quick-and-dirty Usage
 
@@ -38,6 +31,9 @@ Scala's implicit parameter functionality. You will get a compile time
 error if the type of a constructor parameter is unsupported by the
 specific extractor.
 
+
+### Nested Extractors
+
 Additionally, extractors can be nested. In order for this to work, the
 extractor should be an implicit value on the companion object of your
 class:
@@ -55,4 +51,24 @@ class:
     }
 
 
-    Parent.fromJson("""{ "name": "Dad", "children": [{"name": "Son"}] }""")
+    scala> Parent.fromJson("""{ "name": "Dad", "children": [{"name": "Son"}] }""")
+    res1: Parent(Dad,List(Child(Son)))
+
+
+### Recursive Extractors
+
+Extractors can created for recursive data types, however, it requires
+adding an explicit type annotation, as the resulting extractor is a
+recursive definition. (Not sure how to get around this.)
+
+
+    case class IntCons(item: Int, next: Option[IntCons])
+
+    object IntCons extends ((Int, Option[IntCons]) => IntCons) {
+      implicit val fromJson: JsonObjectExtractor.Extractor[IntCons] =
+        JsonObjectExtractor(IntCons, "item", "next")
+    }
+
+
+    scala> IntCons.fromJson("""{"item": 1, "next": {"item": 2, "next": { "item": 3 } } }""")
+    res1: IntCons(1,Some(IntCons(2,Some(IntCons(3, None)))))
