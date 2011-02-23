@@ -176,16 +176,33 @@ object RowExtractorSpec extends Specification with JMocker with ClassMocker {
 }
 
 
-case class Structured(s: String, f: Double, i: Int, ol: OneLong)
-object Structured extends ((String, Double, Int, OneLong) => Structured) {
-  implicit val fromJson = JsonObjectExtractor(Structured, "string", "double", "int", "one_long")
-  val fromUncheckedJson = JsonObjectExtractor(Structured, "string", "double", "int", "one_long")
+case class Structured(s: String, f: Double, i: List[Int], ba: Array[Byte], ol: List[OneLong])
+object Structured extends ((String, Double, List[Int], Array[Byte], List[OneLong]) => Structured) {
+  implicit val fromJson = JsonObjectExtractor(Structured, "string", "double", "int", "bytes", "one_longs")
 }
 
 object JsonExtractorSpec extends Specification {
   "works" in {
-    val json = """{ "string" : "foo", "int" : 1, "double" : 2.3, "one_long" : { "long" : 23 } }"""
+    val json = """{
+      "string" : "foo",
+      "int" : [1, 2, 3],
+      "double" : 2.3,
+      "bytes" : "AQID",
+      "one_longs" : [{ "long" : 23 }, { "long" : 24 }, { "long" : 25 }]
+    }"""
 
-    Structured.fromJson(json) mustEqual Structured("foo", 2.3, 1, OneLong(23L))
+    val generated = Structured.fromJson(json)
+    val expected = Structured(
+      "foo",
+      2.3,
+      List(1,2,3),
+      Array(1,2,3).map(_.toByte),
+      List(OneLong(23L), OneLong(24L), OneLong(25L)))
+
+    generated.s mustEqual expected.s
+    generated.f mustEqual expected.f
+    generated.i mustEqual expected.i
+    generated.ba.toSeq mustEqual expected.ba.toSeq
+    generated.ol mustEqual expected.ol
   }
 }

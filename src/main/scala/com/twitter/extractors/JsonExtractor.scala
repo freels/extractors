@@ -1,8 +1,10 @@
 package com.twitter.extractors
 package json
 
+import scala.collection.JavaConversions._
 import org.codehaus.jackson.map.ObjectMapper
 import org.codehaus.jackson.JsonNode
+import org.codehaus.jackson.JsonParseException
 
 import exceptions._
 
@@ -19,7 +21,7 @@ object JsonRoot {
   implicit def parsed2Json(p: JsonNode) = new JsonRoot(p)
 }
 
-object JsonObjectExtractor extends ExtractorFactory with NestedExtractors {
+object JsonObjectExtractor extends ExtractorFactory with NestedExtractors with IterableExtractors {
   type Root = JsonRoot
   type Container = JsonNode
   type Key = String
@@ -29,6 +31,11 @@ object JsonObjectExtractor extends ExtractorFactory with NestedExtractors {
   def getWithKey(k: Key, c: Container) = c.get(k) match {
     case null => noElement(k)
     case n    => n
+  }
+
+  def foreachInContainer(c: Container)(f: Container => Unit) = c match {
+    case c if c.isArray => c.getElements foreach f
+    case _              => typeMismatch()
   }
 
   trait JsonVal[T] extends ValExtractor[T] {
@@ -46,8 +53,21 @@ object JsonObjectExtractor extends ExtractorFactory with NestedExtractors {
     protected def cast(n: JsonNode)   = n.getValueAsBoolean
   }
 
+  implicit object BinaryVal extends JsonVal[Array[Byte]] {
+    protected def isType(n: JsonNode) = n.isBinary || n.isTextual
+    protected def cast(n: JsonNode) = try {
+      n.getBinaryValue
+    } catch {
+      case e: JsonParseException => typeMismatch()
+    }
+  }
+
   trait NumericJsonVal[T] extends JsonVal[T] {
     protected def isType(n: JsonNode) = n.isNumber
+  }
+
+  implicit object ByteVal extends NumericJsonVal[Byte] {
+    protected def cast(n: JsonNode) = n.getIntValue.toByte
   }
 
   implicit object IntVal extends NumericJsonVal[Int] {
@@ -70,15 +90,28 @@ object JsonObjectExtractor extends ExtractorFactory with NestedExtractors {
     protected def cast(n: JsonNode) = n.getDoubleValue.toFloat
   }
 
-  implicit object StringVal extends JsonVal[String] {
-    override def apply(c: Container) = c.getValueAsText match {
+  implicit object TextVal extends JsonVal[String] {
+    override def apply(c: Container) = cast(c)
+
+    protected def cast(n: JsonNode) = n.getValueAsText match {
       case null => typeMismatch()
       case t    => t
     }
 
     // unused, since apply is overridden
     protected def isType(n: JsonNode) = true
-    protected def cast(n: JsonNode)   = n.getValueAsText
+  }
+
+  implicit object CharVal extends JsonVal[Char] {
+    override def apply(c: Container) = cast(c)
+
+    protected def cast(n: JsonNode) = TextVal(n) match {
+      case s if s.length == 1 => s.charAt(0)
+      case _                  => typeMismatch()
+    }
+
+    // unused, since apply is overridden
+    protected def isType(n: JsonNode) = true
   }
 }
 
