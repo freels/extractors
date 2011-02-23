@@ -16,7 +16,8 @@ trait ExtractorFactory {
     def extract(c: Container): R
   }
 
-  trait ValExtractor[R] extends (Container => R) {
+  trait ValExtractor[R] extends {
+    def apply(c: Container): R
     def handleError(e: Throwable): R = throw e
   }
 
@@ -90,7 +91,7 @@ trait IterableExtractors extends ExtractorFactory {
 
     def apply(c: Container) = {
       val b = bf()
-      foreachInContainer(c) { x => b += x }
+      foreachInContainer(c) { x => b += inner(x) }
       b.result
     }
   }
