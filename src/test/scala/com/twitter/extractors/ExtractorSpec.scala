@@ -206,3 +206,18 @@ object JsonExtractorSpec extends Specification {
     generated.ol mustEqual expected.ol
   }
 }
+
+case class IntCons(i: Int, n: Option[IntCons])
+
+object IntCons extends ((Int, Option[IntCons]) => IntCons) {
+  import JsonObjectExtractor._
+  implicit val fromJson: JsonObjectExtractor.Extractor[IntCons] = JsonObjectExtractor(IntCons, "item", "next")
+}
+
+object RecursionSpec extends Specification {
+  "works" in {
+    val json = """{"item": 1, "next": {"item": 2, "next": { "item": 3 } } }"""
+
+    IntCons.fromJson(json) mustEqual IntCons(1,Some(IntCons(2,Some(IntCons(3, None)))))
+  }
+}

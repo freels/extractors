@@ -102,11 +102,13 @@ trait IterableExtractors extends ExtractorFactory {
 }
 
 trait NestedExtractors extends ExtractorFactory {
-  class ExtractorExtractor[R : Extractor] extends ValExtractor[R] {
-    val extractor = implicitly[Extractor[R]]
+  implicit def lazyExtractor[T]()(implicit e: Extractor[T]) = e
+
+  class ExtractorExtractor[R](ef: () => Extractor[R]) extends ValExtractor[R] {
+    lazy val extractor = ef()
 
     def apply(c: Container) = extractor.extract(c)
   }
 
-  implicit def extractorExtractorVal[T : Extractor] = new ExtractorExtractor[T]
+  implicit def extractorExtractorVal[T](implicit ef: () => Extractor[T]) = new ExtractorExtractor[T](ef)
 }
