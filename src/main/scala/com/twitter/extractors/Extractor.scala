@@ -1,5 +1,7 @@
 package com.twitter.extractors
 
+import scala.collection.generic.CanBuild
+
 
 trait ExtractorFactory {
   type Root
@@ -78,26 +80,25 @@ trait ExtractorFactory {
   </#list>
 }
 
-// trait SeqLikeExtractors extends ExtractorFactory {
-//   type Key = Int
+trait IterableExtractors extends ExtractorFactory {
+  def foreachInContainer(c: Container)(f: Container => Unit)
 
-//   // def apply[R, T1](constructor: (T1) => R)(implicit ve1: ValExtractor[T1]) = {
-//   //   new Extractor1(constructor, ve1(1, _))
-//   // }
+  class IterableExtractor[R, CC[_]](
+    implicit inner: ValExtractor[R],
+    bf: CanBuild[R,CC[R]])
+  extends ValExtractor[CC[R]] {
 
-//   <#list 1..22 as i>
+    def apply(c: Container) = {
+      val b = bf()
+      foreachInContainer(c) { x => b += x }
+      b.result
+    }
+  }
 
-//   <#assign paramTypes><#list 1..i as j>T${j}<#if i != j>,</#if> </#list></#assign>
-//   <#assign params><#list 1..i as j>k${j}: Key<#if i != j>, </#if></#list></#assign>
-//   <#assign implicitParams><#list 1..i as j>ve${j}: ValExtractor[T${j}]<#if i != j>, </#if></#list></#assign>
-//   <#assign classArgs><#list 1..i as j>ve${j}(${j}, _)<#if i != j>, </#if></#list></#assign>
-
-//   def apply[R, ${paramTypes}](constructor: (${paramTypes}) => R)(implicit ${implicitParams}) = {
-//     new Extractor${i}(constructor, ${classArgs})
-//   }
-
-//   </#list>
-// }
+  implicit def iterableExtractor[R, CC[_]](implicit i: ValExtractor[R], bf: CanBuild[R,CC[R]]) = {
+    new IterableExtractor[R,CC]
+  }
+}
 
 trait NestedExtractors extends ExtractorFactory {
   class ExtractorExtractor[R : Extractor] extends ValExtractor[R] {
