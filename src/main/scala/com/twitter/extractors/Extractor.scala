@@ -2,37 +2,83 @@ package com.twitter.extractors
 
 import scala.collection.generic.CanBuild
 
-
 trait ExtractorFactory {
   type Root
   type Container
   type Key
 
   def liftRoot(r: Root): Container
-  def getWithKey(k: Key, c: Container): Container
+  def containerForKey(c: Container, k: Key): Container
 
-  trait Extractor[R] extends (Root => R) {
-    def apply(r: Root) = extract(liftRoot(r))
-    def extract(c: Container): R
+  class Base[R](val extractor: Extractor[R]) extends (Root => R) {
+    def apply(r: Root) = extractor(liftRoot(r))
   }
 
-  trait ValExtractor[R] extends {
-    def apply(c: Container): R
+  trait Extractor[R] {
+    def apply(r: Container): R
     def handleError(e: Throwable): R = throw e
   }
 
-  class KeyedExtractor[T : ValExtractor](k: Key) extends ValExtractor[T] {
-    val inner = implicitly[ValExtractor[T]]
+  trait KeyedExtractor[R] extends Extractor[R] {
+    protected def readValue[T](c: Container, k: Key, extractor: Extractor[T]): T = {
+      val param = try {
+        containerForKey(c, k)
+      } catch {
+        case e: NoSuchElementException => return extractor.handleError(e)
+      }
 
-    def apply(c: Container) = try {
-      inner(getWithKey(k, c))
-    } catch {
-      case e => inner.handleError(e)
+      extractor(param)
     }
   }
 
-  class LiftedValExtractor[T : ValExtractor] extends ValExtractor[Option[T]] {
-    val inner = implicitly[ValExtractor[T]]
+
+  // define arity 1 manually
+
+  class KeyedExtractor1[R, T1 : Extractor](constructor: (T1) => R, k1: Key) extends KeyedExtractor[R] {
+    val ve1 = implicitly[Extractor[T1]]
+
+    def apply(c: Container) = {
+      val p1 = readValue(c, k1, ve1)
+
+      constructor(p1)
+    }
+  }
+
+  def apply[R, T1 : Extractor](constructor: (T1) => R, k1: Key) = {
+    new Base(new KeyedExtractor1(constructor, k1))
+  }
+
+  <#list 2..22 as i>
+
+  <#assign evidencedTypes><#list 1..i as j>T${j} : Extractor<#if i != j>, </#if></#list></#assign>
+  <#assign paramTypes><#list 1..i as j>T${j}<#if i != j>, </#if></#list></#assign>
+  <#assign keyParams><#list 1..i as j>k${j}: Key<#if i != j>, </#if></#list></#assign>
+  <#assign keyArgs><#list 1..i as j>k${j}<#if i != j>, </#if></#list></#assign>
+
+  def apply[R, ${evidencedTypes}](constructor: (${paramTypes}) => R, ${keyParams}) = {
+    new Base(new KeyedExtractor${i}(constructor, ${keyArgs}))
+  }
+
+  class KeyedExtractor${i}[R, ${evidencedTypes}](constructor: (${paramTypes}) => R, ${keyParams}) extends KeyedExtractor[R] {
+
+    <#list 1..i as j>
+    val ve${j} = implicitly[Extractor[T${j}]]
+    </#list>
+
+    def apply(c: Container) = {
+      <#list 1..i as j>
+      val p${j} = readValue(c, k${j}, ve${j})
+      </#list>
+
+      <#assign constructorArgs><#list 1..i as j>p${j}<#if i != j>, </#if></#list></#assign>
+      constructor(${constructorArgs})
+    }
+  }
+  </#list>
+
+
+  class LiftedExtractor[R : Extractor] extends Extractor[Option[R]] {
+    val inner = implicitly[Extractor[R]]
 
     override def handleError(e: Throwable) = e match {
       case e: NoSuchElementException => None
@@ -46,48 +92,16 @@ trait ExtractorFactory {
     }
   }
 
-  implicit def liftedValExtractor[T : ValExtractor] = new LiftedValExtractor[T]
-
-
-  // def apply[R, T1](constructor: (T1) => R, k1: Key)(implicit ve1: ValExtractor[T1]) = {
-  //   new Extractor1(constructor, mkKeyedE(k1, ve1)))
-  // }
-
-  // class Extractor1[R, T1](constructor: (T1) => R, c1: ValExtractor[T1]) extends Extractor[R] {
-  //   def apply(c: Container) = constructor(c1(c))
-  // }
-
-  private def mkKeyedE[T](k: Key, e: ValExtractor[T]) = new KeyedExtractor(k)(e)
-
-  <#list 1..22 as i>
-
-  <#assign paramTypes><#list 1..i as j>T${j}<#if i != j>,</#if> </#list></#assign>
-  <#assign params><#list 1..i as j>k${j}: Key<#if i != j>, </#if></#list></#assign>
-  <#assign implicitParams><#list 1..i as j>ve${j}: ValExtractor[T${j}]<#if i != j>, </#if></#list></#assign>
-  <#assign classArgs><#list 1..i as j>mkKeyedE(k${j}, ve${j})<#if i != j>, </#if></#list></#assign>
-
-  def apply[R, ${paramTypes}](constructor: (${paramTypes}) => R, ${params})(implicit ${implicitParams}) = {
-    new Extractor${i}(constructor, ${classArgs})
-  }
-
-  <#assign applyArgs><#list 1..i as j>ve${j}(c${j})<#if i != j>, </#if></#list></#assign>
-  <#assign classParams><#list 1..i as j>c${j}: ValExtractor[T${j}]<#if i != j>, </#if></#list></#assign>
-  <#assign constructorArgs><#list 1..i as j>c${j}(c)<#if i != j>, </#if></#list></#assign>
-
-  class Extractor${i}[R, ${paramTypes}](constructor: (${paramTypes}) => R, ${classParams}) extends Extractor[R] {
-    def extract(c: Container) = constructor(${constructorArgs})
-  }
-
-  </#list>
+  implicit def liftedExtractor[R : Extractor] = new LiftedExtractor[R]
 }
 
 trait IterableExtractors extends ExtractorFactory {
   def foreachInContainer(c: Container)(f: Container => Unit)
 
   class IterableExtractor[R, CC[_]](
-    implicit inner: ValExtractor[R],
+    implicit inner: Extractor[R],
     bf: CanBuild[R,CC[R]])
-  extends ValExtractor[CC[R]] {
+  extends Extractor[CC[R]] {
 
     def apply(c: Container) = {
       val b = bf()
@@ -96,19 +110,19 @@ trait IterableExtractors extends ExtractorFactory {
     }
   }
 
-  implicit def iterableExtractor[R, CC[_]](implicit i: ValExtractor[R], bf: CanBuild[R,CC[R]]) = {
+  implicit def iterableExtractor[R, CC[_]](implicit i: Extractor[R], bf: CanBuild[R,CC[R]]) = {
     new IterableExtractor[R,CC]
   }
 }
 
 trait NestedExtractors extends ExtractorFactory {
-  implicit def lazyExtractor[T]()(implicit e: Extractor[T]) = e
+  class NestedExtractor[R](rw: () => Base[R]) extends Extractor[R] {
+    lazy val extractor = rw().extractor
 
-  class ExtractorExtractor[R](ef: () => Extractor[R]) extends ValExtractor[R] {
-    lazy val extractor = ef()
-
-    def apply(c: Container) = extractor.extract(c)
+    def apply(c: Container) = extractor(c)
   }
 
-  implicit def extractorExtractorVal[T](implicit ef: () => Extractor[T]) = new ExtractorExtractor[T](ef)
+  // a level of indirection in order to inject laziness into implicit resolution
+  implicit def lazyExtractor[R]()(implicit rw: Base[R]) = rw
+  implicit def nestedExtractor[R](implicit rw: () => Base[R]) = new NestedExtractor[R](rw)
 }

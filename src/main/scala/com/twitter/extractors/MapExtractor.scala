@@ -8,7 +8,7 @@ protected trait MapExtractorLow {
     def convert(v: Any) = v.asInstanceOf[T]
   }
 
-  implicit def anyVal[T]: MapExtractor.ValExtractor[T] = new AnyExtractor[T]
+  implicit def anyVal[T]: MapExtractor.Extractor[T] = new AnyExtractor[T]
 }
 
 object MapExtractor extends ExtractorFactory with MapExtractorLow with NestedExtractors with IterableExtractors {
@@ -18,10 +18,10 @@ object MapExtractor extends ExtractorFactory with MapExtractorLow with NestedExt
 
 
   def liftRoot(r: Root) = r.asInstanceOf[Any]
-  def getWithKey(k: Key, c: Container) = c.asInstanceOf[Root](k)
+  def containerForKey(c: Container, k: Key) = c.asInstanceOf[Root](k)
   def foreachInContainer(c: Container)(f: Container => Unit) = c.asInstanceOf[Seq[Any]].foreach(f)
 
-  trait MapVal[T] extends MapExtractor.ValExtractor[T] {
+  trait MapVal[T] extends MapExtractor.Extractor[T] {
     def convert(v: Any): T
 
     def apply(c: Container): T = try { convert(c) } catch {

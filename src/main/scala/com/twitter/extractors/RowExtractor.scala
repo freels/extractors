@@ -44,9 +44,9 @@ object RowExtractor extends ExtractorFactory with NestedExtractors {
   type Key       = String
 
   def liftRoot(r: Root) = new RowContext(r)
-  def getWithKey(k: Key, c: Container) = c / k
+  def containerForKey(c: Container, k: Key) = c / k
 
-  trait RowVal[T] extends ValExtractor[T]
+  trait RowVal[T] extends Extractor[T]
 
   implicit object BoolVal extends RowVal[Boolean] {
     def apply(c: Container) = c.getBoolean

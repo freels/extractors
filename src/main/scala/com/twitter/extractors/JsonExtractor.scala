@@ -28,7 +28,7 @@ object JsonObjectExtractor extends ExtractorFactory with NestedExtractors with I
 
   def liftRoot(r: Root) = r.root
 
-  def getWithKey(k: Key, c: Container) = c.get(k) match {
+  def containerForKey(c: Container, k: Key) = c.get(k) match {
     case null => noElement(k)
     case n    => n
   }
@@ -38,7 +38,7 @@ object JsonObjectExtractor extends ExtractorFactory with NestedExtractors with I
     case _              => typeMismatch()
   }
 
-  trait JsonVal[T] extends ValExtractor[T] {
+  trait JsonVal[T] extends Extractor[T] {
     protected def isType(node: JsonNode): Boolean
     protected def cast(node: JsonNode): T
 

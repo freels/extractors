@@ -211,7 +211,7 @@ case class IntCons(i: Int, n: Option[IntCons])
 
 object IntCons extends ((Int, Option[IntCons]) => IntCons) {
   import JsonObjectExtractor._
-  implicit val fromJson: JsonObjectExtractor.Extractor[IntCons] = JsonObjectExtractor(IntCons, "item", "next")
+  implicit val fromJson: JsonObjectExtractor.Base[IntCons] = JsonObjectExtractor(IntCons, "item", "next")
 }
 
 object RecursionSpec extends Specification {
