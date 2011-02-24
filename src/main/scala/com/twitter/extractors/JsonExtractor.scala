@@ -48,6 +48,11 @@ object JsonObjectExtractor extends ExtractorFactory with NestedExtractors with I
     }
   }
 
+  implicit object JsonNodeVal extends JsonVal[JsonNode] {
+    protected def isType(n: JsonNode) = true
+    protected def cast(n: JsonNode)   = n
+  }
+
   implicit object BoolVal extends JsonVal[Boolean] {
     protected def isType(n: JsonNode) = n.isBoolean || n.isNumber
     protected def cast(n: JsonNode)   = n.getValueAsBoolean
