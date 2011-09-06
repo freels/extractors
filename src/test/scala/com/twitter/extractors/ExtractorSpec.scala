@@ -3,70 +3,70 @@ package com.twitter.extractors
 import org.specs.Specification
 import org.specs.mock.{ClassMocker, JMocker}
 
-import com.twitter.extractors.map.MapExtractor
+import com.twitter.extractors.map.ObjectExtractor
 import com.twitter.extractors.sql.RowExtractor
 import com.twitter.extractors.json.JsonObjectExtractor
 
 
 case class OneBool(v: Boolean)
 object OneBool extends (Boolean => OneBool) {
-  implicit val fromMap = MapExtractor(apply, "bool")
+  implicit val fromMap = ObjectExtractor(apply, "bool")
   implicit val fromRow = RowExtractor(OneBool, "c1")
 }
 
 case class OneChar(v: Char)
 object OneChar extends (Char => OneChar) {
-  implicit val fromMap = MapExtractor(apply, "char")
+  implicit val fromMap = ObjectExtractor(apply, "char")
 }
 
 case class OneByte(v: Byte)
 object OneByte extends (Byte => OneByte) {
-  implicit val fromMap = MapExtractor(apply, "byte")
+  implicit val fromMap = ObjectExtractor(apply, "byte")
 }
 
 case class OneShort(v: Short)
 object OneShort extends (Short => OneShort) {
-  implicit val fromMap = MapExtractor(apply, "short")
+  implicit val fromMap = ObjectExtractor(apply, "short")
 }
 
 case class OneInt(v: Int)
 object OneInt extends (Int => OneInt) {
-  implicit val fromMap = MapExtractor(apply, "int")
+  implicit val fromMap = ObjectExtractor(apply, "int")
 }
 
 case class OneLong(v: Long)
 object OneLong extends (Long => OneLong) {
-  implicit val fromMap = MapExtractor(apply, "long")
+  implicit val fromMap = ObjectExtractor(apply, "long")
   implicit val fromJson = JsonObjectExtractor(OneLong, "long")
 }
 
 case class OneDouble(v: Double)
 object OneDouble extends (Double => OneDouble) {
-  implicit val fromMap = MapExtractor(apply, "double")
+  implicit val fromMap = ObjectExtractor(apply, "double")
 }
 
 case class OneFloat(v: Float)
 object OneFloat extends (Float => OneFloat) {
-  implicit val fromMap = MapExtractor(apply, "float")
+  implicit val fromMap = ObjectExtractor(apply, "float")
 }
 
 case class OneString(v: String)
 object OneString extends (String => OneString) {
-  implicit val fromMap = MapExtractor(apply, "string")
+  implicit val fromMap = ObjectExtractor(apply, "string")
 }
 
 case class OneOpt(v: Option[Float])
 object OneOpt extends (Option[Float] => OneOpt) {
-  implicit val fromMap = MapExtractor(apply, "float")
+  implicit val fromMap = ObjectExtractor(apply, "float")
 }
 
 case class MapAndLong(v1: OneFloat, v2: Long)
 object MapAndLong extends ((OneFloat, Long) => MapAndLong) {
-  implicit val fromMap = MapExtractor(apply, "one_float", "long")
+  implicit val fromMap = ObjectExtractor(apply, "one_float", "long")
 }
 
 
-object MapExtractorSpec extends Specification {
+object ObjectExtractorSpec extends Specification {
   "extracts" in {
     "object" in {
       OneString.fromMap(Map("string" -> "hi there")) mustEqual OneString("hi there")
@@ -133,8 +133,8 @@ object MapExtractorSpec extends Specification {
     }
 
     "custom extractors" in {
-      implicit val oneFloatExtractor = MapExtractor(OneFloat, "alt_float")
-      val extractor = MapExtractor(MapAndLong, "of", "a_long")
+      implicit val oneFloatExtractor = ObjectExtractor(OneFloat, "alt_float")
+      val extractor = ObjectExtractor(MapAndLong, "of", "a_long")
 
       val map = Map("of" -> Map("alt_float" -> 1.0), "a_long" -> 2)
       extractor(map) mustEqual MapAndLong(OneFloat(1), 2)
@@ -145,7 +145,7 @@ object MapExtractorSpec extends Specification {
 
 case class OneByteArray(v: Array[Byte])
 object OneByteArray extends (Array[Byte] => OneByteArray) {
-  implicit val fromMap = MapExtractor(apply, "byte_array")
+  implicit val fromMap = ObjectExtractor(apply, "byte_array")
   implicit val fromRow = RowExtractor(OneByteArray, "c1")
 }
 

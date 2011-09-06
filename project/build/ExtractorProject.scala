@@ -3,11 +3,13 @@ import com.twitter.sbt._
 
 class ExtractorProject(info: ProjectInfo) extends StandardProject(info)
 with TemplateProject
-//with DefaultRepos
+with DefaultRepos
 with SubversionPublisher {
 
   val jackson    = "org.codehaus.jackson" % "jackson-core-asl"   % "1.7.3" % "provided"
   val jacksonMap = "org.codehaus.jackson" % "jackson-mapper-asl" % "1.7.3" % "provided"
+
+  val util       = "com.twitter" % "util-core" % "1.11.1"
 
   val asm       = "asm"                     % "asm"         % "1.5.3" % "test"
   val cglib     = "cglib"                   % "cglib"       % "2.1_3" % "test"

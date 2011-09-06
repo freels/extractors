@@ -1,12 +1,12 @@
 package com.twitter.extractors
 package json
 
+import scala.collection.generic.CanBuild
 import scala.collection.JavaConversions._
 import org.codehaus.jackson.map.ObjectMapper
 import org.codehaus.jackson.JsonNode
 import org.codehaus.jackson.JsonParseException
-
-import exceptions._
+import com.twitter.extractors.exceptions._
 
 
 class JsonRoot(val root: JsonNode)
@@ -21,28 +21,31 @@ object JsonRoot {
   implicit def parsed2Json(p: JsonNode) = new JsonRoot(p)
 }
 
-object JsonObjectExtractor extends ExtractorFactory with NestedExtractors with IterableExtractors {
-  type Root = JsonRoot
-  type Container = JsonNode
+object JsonObjectExtractor extends ExtractorFactory with KeyedExtractors with IterableExtractors {
+  type Container = JsonRoot
   type Key = String
 
-  def liftRoot(r: Root) = r.root
-
-  def containerForKey(c: Container, k: Key) = c.get(k) match {
-    case null => noElement(k)
-    case n    => n
+  def KeyExtractor[R](key: Key, inner: Extractor[R]) = new SubcontainerExtractor[R](inner) {
+    def subcontainer(c: Container) = c.root.get(key) match {
+      case null => None
+      case n    => Some(new JsonRoot(n))
+    }
   }
 
-  def foreachInContainer(c: Container)(f: Container => Unit) = c match {
-    case c if c.isArray => c.getElements foreach f
-    case _              => typeMismatch()
+  def IterableExtractor[R, CC[R]](inner: Extractor[R], bf: CanBuild[R,CC[R]]): Extractor[CC[R]] = {
+    new IterableExtractor[R,CC](inner, bf) {
+      def subcontainers(c: Container) = c.root match {
+        case c if c.isArray => c.getElements map { new JsonRoot(_) } toIterable
+        case _              => typeMismatch()
+      }
+    }
   }
 
   trait JsonVal[T] extends Extractor[T] {
     protected def isType(node: JsonNode): Boolean
     protected def cast(node: JsonNode): T
 
-    def apply(c: Container) = c match {
+    def apply(c: Container) = c.root match {
       case n if isType(n) => cast(n)
       case _              => typeMismatch()
     }
@@ -96,7 +99,7 @@ object JsonObjectExtractor extends ExtractorFactory with NestedExtractors with I
   }
 
   implicit object TextVal extends JsonVal[String] {
-    override def apply(c: Container) = cast(c)
+    override def apply(c: Container) = cast(c.root)
 
     protected def cast(n: JsonNode) = n.getValueAsText match {
       case null => typeMismatch()
@@ -108,7 +111,7 @@ object JsonObjectExtractor extends ExtractorFactory with NestedExtractors with I
   }
 
   implicit object CharVal extends JsonVal[Char] {
-    override def apply(c: Container) = cast(c)
+    override def apply(c: Container) = cast(c.root)
 
     protected def cast(n: JsonNode) = TextVal(n) match {
       case s if s.length == 1 => s.charAt(0)
