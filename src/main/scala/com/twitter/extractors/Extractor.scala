@@ -86,8 +86,12 @@ trait LiftedExtractors extends ExtractorFactory {
     def apply(c: Container) = Some(inner(c))
   }
 
-  implicit def liftedExtractor[R : Extractor]: Extractor[Option[R]] = {
-    new LiftedExtractor[R](implicitly[Extractor[R]])
+  implicit def extractorToLifted[R](e: Extractor[R]): Extractor[Option[R]] = {
+    new LiftedExtractor[R](e)
+  }
+
+  implicit def liftedExtractorForType[R : Extractor]: Extractor[Option[R]] = {
+    extractorToLifted(implicitly[Extractor[R]])
   }
 }
 
