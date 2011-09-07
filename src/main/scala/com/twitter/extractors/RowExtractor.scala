@@ -43,13 +43,13 @@ class RowContext(rs: ResultSet, path: Seq[String]) {
 
 
 
-object RowExtractor extends ExtractorFactory with KeyedExtractors {
+object RowExtractor extends ExtractorFactory
+with LiftedExtractors
+with KeyExtractors {
   type Container = RowContext
   type Key       = String
 
-  def KeyExtractor[R](key: Key, inner: Extractor[R]) = new SubcontainerExtractor[R](inner) {
-    def subcontainer(c: Container) = c / k
-  }
+  def keyMapper(c: Container, key: Key) = Some(c / key)
 
   implicit object BoolVal extends Extractor[Boolean] {
     def apply(c: Container) = c.getBoolean

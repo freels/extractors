@@ -1,6 +1,7 @@
 package com.twitter.extractors
 package map
 
+import scala.collection.generic.CanBuild
 import com.twitter.util.{Try, Return, Throw}
 import com.twitter.extractors.exceptions._
 
@@ -15,21 +16,16 @@ protected trait ObjectExtractorLow {
 
 object ObjectExtractor extends ExtractorFactory
 with ObjectExtractorLow
-with KeyedExtractors
+with LiftedExtractors
+with KeyExtractors
 with IterableExtractors {
 
   type Container = Any
   type Key       = String
 
-  def KeyExtractor[R](key: Key, inner: Extractor[R]) = new SubcontainerExtractor[R](inner) {
-    def subcontainer(c: Container) = c.asInstanceOf[Map[String,Any]].get(key)
-  }
+  def keyMapper(c: Container, key: Key) = c.asInstanceOf[Map[String,Any]].get(key)
 
-  def IterableExtractor[R, CC[R](inner: Extractor[R], bf: CanBuild[R,CC[R]]): Extractor[CC[R]] = {
-    new IterableExtractor[R,CC](inner, bf) {
-      def subcontainers(c: Container) = c.asInstanceOf[Iterable[Container]]
-    }
-  }
+  def iterableMapper(c: Container) = c.asInstanceOf[Iterable[Container]]
 
   implicit object BoolVal extends ObjectExtractor.Extractor[Boolean] {
     def apply(v: Any) = v match { case b: Boolean => b == true }

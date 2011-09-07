@@ -3,88 +3,75 @@ package com.twitter.extractors
 import scala.collection.generic.CanBuild
 import com.twitter.extractors.exceptions._
 
-trait Extractor[C,R] {
-  def apply(c: C): R
-
-  def applyOption(c: Option[C]) = c match {
-    case Some(c) => apply(c)
-    case None    => extractError()
-  }
-
-  def extractError(): R = {
-    throw new ExtractionException("decode failed.")
-  }
-}
-
-object Extractor {
-  type AbstractExtractor[C,R] = Extractor[C,R]
-}
 
 trait ExtractorFactory {
   type Container
 
-  trait Extractor[R] extends Extractor.AbstractExtractor[Container,R]
+  trait Extractor[R] {
+    def apply(c: Container): R
 
-  abstract class SubcontainerExtractor[R](inner: Extractor[R]) extends Extractor[R] {
-    def apply(c: Container) = inner.applyOption(subcontainer(c))
+    def applyOption(c: Option[Container]) = c match {
+      case Some(c) => apply(c)
+      case None    => extractError()
+    }
 
-    def subcontainer(c: Container): Option[Container]
+    def extractError(): R = {
+      throw new ExtractionException("decode failed.")
+    }
   }
 
-  class LiftedExtractor[R](inner: Extractor[R]) extends Extractor[Option[R]] {
-    def apply(c: Container) = Some(inner(c))
-
-    override def extractError() = None
-  }
-
-  implicit def liftedExtractor[R : Extractor]: Extractor[Option[R]] = {
-    new LiftedExtractor[R](implicitly[Extractor[R]])
-  }
-}
-
-trait KeyedExtractors extends ExtractorFactory {
-  type Key
-
-  def KeyExtractor[R](k: Key, e: Extractor[R]): Extractor[R]
-
-  trait KeyedExtractor[R] extends Extractor[R]
+  trait ProductExtractor[R] extends Extractor[R]
 
   // define arity 1 manually
 
-  class KeyedExtractor1[R, T1 : Extractor](constructor: (T1) => R, k1: Key) extends KeyedExtractor[R] {
+  def apply[R, T1, K1](
+    constructor: (T1) => R,
+    k1: => K1
+  )(
+    implicit ke1: K1 => Extractor[T1]
+  ) = {
+    new ProductExtractor1(constructor, ke1(k1))
+  }
 
-    val ve1 = KeyExtractor(k1, implicitly[Extractor[T1]])
+  class ProductExtractor1[R, T1](
+    constructor: (T1) => R,
+    r1: => Extractor[T1])
+  extends ProductExtractor[R] {
+
+    lazy val e1 = r1
 
     def apply(c: Container) = {
-      val p1 = ve1(c)
+      val p1 = e1(c)
       constructor(p1)
     }
   }
 
-  def apply[R, T1 : Extractor](constructor: (T1) => R, k1: Key) = {
-    new KeyedExtractor1(constructor, k1)
-  }
-
   <#list 2..22 as i>
 
-  <#assign evidencedTypes><#list 1..i as j>T${j} : Extractor<#if i != j>, </#if></#list></#assign>
-  <#assign paramTypes><#list 1..i as j>T${j}<#if i != j>, </#if></#list></#assign>
-  <#assign keyParams><#list 1..i as j>k${j}: Key<#if i != j>, </#if></#list></#assign>
-  <#assign keyArgs><#list 1..i as j>k${j}<#if i != j>, </#if></#list></#assign>
-
-  def apply[R, ${evidencedTypes}](constructor: (${paramTypes}) => R, ${keyParams}) = {
-    new KeyedExtractor${i}(constructor, ${keyArgs})
+  def apply[R, <#list 1..i as j>T${j}, K${j}<#if i != j>, </#if></#list>](
+    constructor: (<#list 1..i as j>T${j}<#if i != j>, </#if></#list>) => R,
+    <#list 1..i as j>k${j}: => K${j}<#if i != j>, </#if></#list>
+  )(
+    implicit <#list 1..i as j>ke${j}: K${j} => Extractor[T${j}]<#if i != j>, </#if></#list>
+  ) = {
+    new ProductExtractor${i}(
+      constructor,
+      <#list 1..i as j>ke${j}(k${j})<#if i != j>, </#if></#list>
+    )
   }
 
-  class KeyedExtractor${i}[R, ${evidencedTypes}](constructor: (${paramTypes}) => R, ${keyParams}) extends KeyedExtractor[R] {
+  class ProductExtractor${i}[R, <#list 1..i as j>T${j}<#if i != j>, </#if></#list>](
+    constructor: (<#list 1..i as j>T${j}<#if i != j>, </#if></#list>) => R,
+    <#list 1..i as j>r${j}: => Extractor[T${j}]<#if i != j>, </#if></#list>)
+  extends ProductExtractor[R] {
 
     <#list 1..i as j>
-    val ve${j} = KeyExtractor(k${j}, implicitly[Extractor[T${j}]])
+    lazy val e${j} = r${j}
     </#list>
 
     def apply(c: Container) = {
       <#list 1..i as j>
-      val p${j} = ve${j}(c)
+      val p${j} = e${j}(c)
       </#list>
       constructor(<#list 1..i as j>p${j}<#if i != j>, </#if></#list>)
     }
@@ -92,23 +79,46 @@ trait KeyedExtractors extends ExtractorFactory {
   </#list>
 }
 
-trait IterableExtractors extends ExtractorFactory {
+trait LiftedExtractors extends ExtractorFactory {
+  class LiftedExtractor[R](inner: Extractor[R]) extends Extractor[Option[R]] {
+    override def extractError() = None
 
-  def IterableExtractor[R, CC[R]](inner: Extractor[R], bf: CanBuild[R,CC[R]]): Extractor[CC[R]]
-
-  abstract class IterableExtractor[R, CC[R]](inner: Extractor[R], bf: CanBuild[R,CC[R]])
-  extends Extractor[CC[R]] {
-
-    def apply(c: Container) = {
-      val b = bf()
-      subcontainers(c) foreach { x => b += inner(x) }
-      b.result
-    }
-
-    def subcontainers(c: Container): Iterable[Container]
+    def apply(c: Container) = Some(inner(c))
   }
 
-  implicit def iterableExtractor[R, CC[R]](implicit i: Extractor[R], bf: CanBuild[R,CC[R]]): Extractor[CC[R]] = {
-    IterableExtractor(i, bf)
+  implicit def liftedExtractor[R : Extractor]: Extractor[Option[R]] = {
+    new LiftedExtractor[R](implicitly[Extractor[R]])
+  }
+}
+
+trait KeyExtractors extends ExtractorFactory {
+  type Key
+
+  def keyMapper(c: Container, k: Key): Option[Container]
+
+  class KeyExtractor[R](key: Key, inner: Extractor[R]) extends Extractor[R] {
+    def apply(c: Container) = inner.applyOption(keyMapper(c, key))
+  }
+
+  implicit def key[R : Extractor](k: Key): Extractor[R] = {
+    new KeyExtractor(k, implicitly[Extractor[R]])
+  }
+}
+
+trait IterableExtractors extends ExtractorFactory {
+
+  def iterableMapper(c: Container): Iterable[Container]
+
+  class IterableExtractor[R, CC[R]](inner: Extractor[R], bf: CanBuild[R,CC[R]])
+  extends Extractor[CC[R]] {
+    def apply(c: Container) = {
+      val b = bf()
+      iterableMapper(c) foreach { x => b += inner(x) }
+      b.result
+    }
+  }
+
+  implicit def iterableExtractor[R, CC[_]](implicit e: Extractor[R], bf: CanBuild[R,CC[R]]): Extractor[CC[R]] = {
+    new IterableExtractor[R,CC](e, bf)
   }
 }

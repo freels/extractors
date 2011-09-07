@@ -22,26 +22,21 @@ object JsonRoot {
 }
 
 object JsonObjectExtractor extends ExtractorFactory
-with KeyedExtractors
+with KeyExtractors
+with LiftedExtractors
 with IterableExtractors {
 
   type Container = JsonRoot
   type Key = String
 
-  def KeyExtractor[R](key: Key, inner: Extractor[R]) = new SubcontainerExtractor[R](inner) {
-    def subcontainer(c: Container) = c.root.get(key) match {
-      case null => None
-      case n    => Some(new JsonRoot(n))
-    }
+  def keyMapper(c: Container, key: Key) = c.root.get(key) match {
+    case null => None
+    case n    => Some(new JsonRoot(n))
   }
 
-  def IterableExtractor[R, CC[R]](inner: Extractor[R], bf: CanBuild[R,CC[R]]): Extractor[CC[R]] = {
-    new IterableExtractor[R,CC](inner, bf) {
-      def subcontainers(c: Container) = c.root match {
-        case c if c.isArray => c.getElements map { new JsonRoot(_) } toIterable
-        case _              => typeMismatch()
-      }
-    }
+  def iterableMapper(c: Container) = c.root match {
+    case c if c.isArray => c.getElements map { new JsonRoot(_) } toIterable
+    case _              => typeMismatch()
   }
 
   trait JsonVal[T] extends Extractor[T] {
@@ -141,7 +136,7 @@ object Main {
 
   case class InReplyTo(statusId: Long, userid: Long)
   case class Retweet(parentStatusId: Long, sourceStatusId: Long)
-  case class Status(id: Long, userId: Long, inReplyTo: InReplyTo, retweet: Retweet)
+  case class Status(id: Long, userId: Long, inReplyTo: InReplyTo, retweet: Option[Retweet])
 
   implicit val retweetFromJson   = JsonObjectExtractor(Retweet, "parent_status_id", "source_status_id")
   implicit val inReplyToFromJson = JsonObjectExtractor(InReplyTo, "status_id", "user_id")
@@ -189,9 +184,11 @@ object Main {
             replyNode.get("status_id").getLongValue,
             replyNode.get("user_id").getLongValue
           ),
-          Retweet(
-            rtNode.get("parent_status_id").getLongValue,
-            rtNode.get("source_status_id").getLongValue
+          Some(
+            Retweet(
+              rtNode.get("parent_status_id").getLongValue,
+              rtNode.get("source_status_id").getLongValue
+            )
           )
         )
       }
