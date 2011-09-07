@@ -89,10 +89,6 @@ trait LiftedExtractors extends ExtractorFactory {
   implicit def extractorToLifted[R](e: Extractor[R]): Extractor[Option[R]] = {
     new LiftedExtractor[R](e)
   }
-
-  implicit def liftedExtractorForType[R : Extractor]: Extractor[Option[R]] = {
-    extractorToLifted(implicitly[Extractor[R]])
-  }
 }
 
 trait KeyExtractors extends ExtractorFactory {
