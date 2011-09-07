@@ -21,7 +21,10 @@ object JsonRoot {
   implicit def parsed2Json(p: JsonNode) = new JsonRoot(p)
 }
 
-object JsonObjectExtractor extends ExtractorFactory with KeyedExtractors with IterableExtractors {
+object JsonObjectExtractor extends ExtractorFactory
+with KeyedExtractors
+with IterableExtractors {
+
   type Container = JsonRoot
   type Key = String
 

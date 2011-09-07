@@ -13,12 +13,22 @@ protected trait ObjectExtractorLow {
   implicit def anyVal[T]: ObjectExtractor.Extractor[T] = new AnyExtractor[T]
 }
 
-object ObjectExtractor extends ExtractorFactory with ObjectExtractorLow with KeyedExtractors {
+object ObjectExtractor extends ExtractorFactory
+with ObjectExtractorLow
+with KeyedExtractors
+with IterableExtractors {
+
   type Container = Any
   type Key       = String
 
   def KeyExtractor[R](key: Key, inner: Extractor[R]) = new SubcontainerExtractor[R](inner) {
     def subcontainer(c: Container) = c.asInstanceOf[Map[String,Any]].get(key)
+  }
+
+  def IterableExtractor[R, CC[R](inner: Extractor[R], bf: CanBuild[R,CC[R]]): Extractor[CC[R]] = {
+    new IterableExtractor[R,CC](inner, bf) {
+      def subcontainers(c: Container) = c.asInstanceOf[Iterable[Container]]
+    }
   }
 
   implicit object BoolVal extends ObjectExtractor.Extractor[Boolean] {
