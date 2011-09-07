@@ -6,9 +6,9 @@ import com.twitter.util.{Try, Return, Throw}
 import com.twitter.extractors.exceptions._
 
 
-protected trait ObjectExtractorLow {
-  protected class AnyExtractor[T] extends ObjectExtractor.Extractor[T] {
-    def apply(v: Any) = v.asInstanceOf[T]
+protected trait ObjectExtractorLow extends {
+  protected class AnyExtractor[T] extends ObjectExtractor.ObjectExtractor[T] {
+    def convert(v: Any) = v.asInstanceOf[T]
   }
 
   implicit def anyVal[T]: ObjectExtractor.Extractor[T] = new AnyExtractor[T]
@@ -27,36 +27,48 @@ with IterableExtractors {
 
   def iterableMapper(c: Container) = c.asInstanceOf[Iterable[Container]]
 
-  implicit object BoolVal extends ObjectExtractor.Extractor[Boolean] {
-    def apply(v: Any) = v match { case b: Boolean => b == true }
+  trait ObjectExtractor[R] extends Extractor[R] {
+    def convert(c: Container): R
+
+    def apply(c: Container) = try {
+      convert(c)
+    } catch {
+      case e: MatchError            => typeMismatch()
+      case e: NoSuchMethodException => typeMismatch()
+      case e: ClassCastException    => typeMismatch()
+    }
   }
 
-  implicit object ByteVal extends ObjectExtractor.Extractor[Byte] {
-    def apply(v: Any) = v.asInstanceOf[{ def toByte: Byte }].toByte
+  implicit object BoolVal extends ObjectExtractor[Boolean] {
+    def convert(v: Any) = v match { case b: Boolean => b == true }
   }
 
-  implicit object CharVal extends ObjectExtractor.Extractor[Char] {
-    def apply(v: Any) = v.asInstanceOf[{ def toChar: Char }].toChar
+  implicit object ByteVal extends ObjectExtractor[Byte] {
+    def convert(v: Any) = v.asInstanceOf[{ def toByte: Byte }].toByte
   }
 
-  implicit object ShortVal extends ObjectExtractor.Extractor[Short] {
-    def apply(v: Any) = v.asInstanceOf[{ def toShort: Short }].toShort
+  implicit object CharVal extends ObjectExtractor[Char] {
+    def convert(v: Any) = v.asInstanceOf[{ def toChar: Char }].toChar
   }
 
-  implicit object IntVal extends ObjectExtractor.Extractor[Int] {
-    def apply(v: Any) = v.asInstanceOf[{ def toInt: Int }].toInt
+  implicit object ShortVal extends ObjectExtractor[Short] {
+    def convert(v: Any) = v.asInstanceOf[{ def toShort: Short }].toShort
   }
 
-  implicit object LongVal extends ObjectExtractor.Extractor[Long] {
-    def apply(v: Any) = v.asInstanceOf[{ def toLong: Long }].toLong
+  implicit object IntVal extends ObjectExtractor[Int] {
+    def convert(v: Any) = v.asInstanceOf[{ def toInt: Int }].toInt
   }
 
-  implicit object DoubleVal extends ObjectExtractor.Extractor[Double] {
-    def apply(v: Any) = v.asInstanceOf[{ def toDouble: Double }].toDouble
+  implicit object LongVal extends ObjectExtractor[Long] {
+    def convert(v: Any) = v.asInstanceOf[{ def toLong: Long }].toLong
   }
 
-  implicit object FloatVal extends ObjectExtractor.Extractor[Float] {
-    def apply(v: Any) = v.asInstanceOf[{ def toFloat: Float }].toFloat
+  implicit object DoubleVal extends ObjectExtractor[Double] {
+    def convert(v: Any) = v.asInstanceOf[{ def toDouble: Double }].toDouble
+  }
+
+  implicit object FloatVal extends ObjectExtractor[Float] {
+    def convert(v: Any) = v.asInstanceOf[{ def toFloat: Float }].toFloat
   }
 }
 

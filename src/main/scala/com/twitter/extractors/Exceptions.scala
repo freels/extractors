@@ -12,5 +12,5 @@ package object exceptions {
   def error(description: String): Nothing = throw new ExtractionException(description)
   def typeMismatch(): Nothing =
     throw new TypeMismatchException("element is not the expected type.", null)
-  def noElement(key: String): Nothing = throw new NoSuchElementException("key not found: " + key)
+  def noElement(key: Any): Nothing = throw new NoSuchElementException("key not found: "+ key)
 }

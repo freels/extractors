@@ -76,7 +76,8 @@ object ObjectExtractorSpec extends Specification {
       OneBool.fromMap(Map("bool" -> true)) mustEqual OneBool(true)
       OneBool.fromMap(Map("bool" -> true)) mustEqual OneBool(true)
       OneBool.fromMap(Map("bool" -> "foo")) must throwA[TypeMismatchException]
-      OneBool.fromMap(Map("foo" -> true)) must throwA(new NoSuchElementException("key not found: bool"))
+      //OneBool.fromMap(Map("foo" -> true)) must throwA(new NoSuchElementException("key not found: bool"))
+      OneBool.fromMap(Map("foo" -> true)) must throwA[ExtractionException]
     }
 
     "char" in {
